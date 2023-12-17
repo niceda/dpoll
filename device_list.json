@@ -1,0 +1,491 @@
+{
+    "device": [
+        {
+            "enable": true,
+            "signature": {
+                "type": "PCS",
+                "id": 0,
+                "name": "pcs_0",
+                "model": "SkiffEmuPCS"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "TCP",
+                "host": "10.254.1.100",
+                "port": "502",
+                "period_ms": 3000,
+                "timeout_ms": 500
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "PCS",
+                "id": 1,
+                "name": "pcs_1",
+                "model": "SkiffEmuPCS"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "TCP",
+                "host": "10.254.1.100",
+                "port": "502",
+                "period_ms": 3000,
+                "timeout_ms": 500
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "BMS",
+                "id": 0,
+                "name": "bms_0",
+                "comment": "",
+                "model": "SkiffEmuBMS"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "TCP",
+                "host": "10.254.1.100",
+                "port": "502",
+                "period_ms": 5000,
+                "timeout_ms": 500
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "BMS",
+                "id": 1,
+                "name": "bms_1",
+                "comment": "",
+                "model": "SkiffEmuBMS"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "TCP",
+                "host": "10.254.1.100",
+                "port": "502",
+                "period_ms": 5000,
+                "timeout_ms": 500
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "EM2",
+                "id": 0,
+                "name": "em2_0",
+                "comment": "",
+                "model": "Virtual EM2"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "TCP",
+                "host": "10.254.1.100",
+                "port": "502",
+                "period_ms": 5000,
+                "timeout_ms": 500
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            },
+            "upstream": {
+                "type": "pcs",
+                "id": 0
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "EM2",
+                "id": 1,
+                "name": "em2_1",
+                "comment": "",
+                "model": "Virtual EM2"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "TCP",
+                "host": "10.254.1.100",
+                "port": "502",
+                "period_ms": 5000,
+                "timeout_ms": 500
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            },
+            "upstream": {
+                "type": "pcs",
+                "id": 1
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "EM2",
+                "id": 99,
+                "name": "em2_99",
+                "comment": "固定负载",
+                "model": "Virtual EM2"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "TCP",
+                "host": "10.254.1.100",
+                "port": "502",
+                "period_ms": 5000,
+                "timeout_ms": 500
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            },
+            "upstream": {
+                "type": "daily",
+                "power": [
+                    0,
+                    1000000,
+                    2000000
+                ]
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "EM2",
+                "id": 50,
+                "name": "em2_50",
+                "comment": "变压器0",
+                "model": "Secondary EM2"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "TCP",
+                "host": "10.254.1.100",
+                "port": "502",
+                "period_ms": 5000,
+                "timeout_ms": 500
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            },
+            "upstream": {
+                "add": [
+                    0,
+                    99
+                ]
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "EM2",
+                "id": 51,
+                "name": "em2_51",
+                "comment": "变压器1",
+                "model": "Secondary EM2"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "TCP",
+                "host": "10.254.1.100",
+                "port": "502",
+                "period_ms": 5000,
+                "timeout_ms": 500
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            },
+            "upstream": {
+                "add": [
+                    1,
+                    99
+                ]
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "EM2",
+                "id": 100,
+                "name": "em2_100",
+                "comment": "总表",
+                "model": "Secondary EM2"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "TCP",
+                "host": "10.254.1.100",
+                "port": "502",
+                "period_ms": 5000,
+                "timeout_ms": 500
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            },
+            "upstream": {
+                "add": [
+                    50,
+                    51
+                ]
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "AC",
+                "id": 1,
+                "name": "AC_1",
+                "comment": "空调2",
+                "model": "Envicool U3-EC"
+            },
+            "remote": {
+                "lock": "sg",
+                "protocol": "modbus",
+                "mode": "RTU",
+                "device": "/dev/ttyS3",
+                "baud": 9600,
+                "slave_id": 2,
+                "parity": "none",
+                "period_ms": 6000,
+                "timeout_ms": 10000
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_segments": false,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "AC",
+                "id": 2,
+                "name": "AC_2",
+                "comment": "空调3",
+                "model": "Envicool U3-EC"
+            },
+            "remote": {
+                "lock": "sg1",
+                "protocol": "modbus",
+                "device": "/dev/ttyS1",
+                "baud": 9600,
+                "mode": "RTU",
+                "slave_id": 3,
+                "parity": "none",
+                "period_ms": 7000,
+                "timeout_ms": 8000
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_segments": false,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "AC",
+                "id": 3,
+                "name": "AC_3",
+                "comment": "空调4",
+                "model": "Envicool U3-EC"
+            },
+            "remote": {
+                "lock": "sg1",
+                "protocol": "modbus",
+                "mode": "RTU",
+                "device": "/dev/ttyS1",
+                "baud": 9600,
+                "slave_id": 4,
+                "parity": "none",
+                "period_ms": 4000,
+                "timeout_ms": 10000
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_segments": false,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": true,
+                "debug_log": false
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "BMS",
+                "id": 15,
+                "name": "bms_15",
+                "comment": "",
+                "model": "Svolt L3"
+            },
+            "remote": {
+                "protocol": "iec104",
+                "mode": "tcp",
+                "host": "192.168.10.13",
+                "port": "2404",
+                "nspace": 1,
+                "period_ms": 5000,
+                "idle_before_segment": 50,
+                "timeout_ms": 10000
+            },
+            "deploy": {
+                "nstack": 8,
+                "ncluster": 16,
+                "nbattery_per_cluster": 0,
+                "temperature_pattern": "1,2,2,2,2,1,1,1,1,1"
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_segments": false,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": false,
+                "debug_log": false
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "BMS",
+                "id": 16,
+                "name": "bms_16",
+                "comment": "",
+                "model": "Svolt L3"
+            },
+            "remote": {
+                "protocol": "iec104",
+                "mode": "rtu_in_tcp",
+                "host": "192.168.10.13",
+                "port": "2404",
+                "nspace": 1,
+                "period_ms": 5000,
+                "idle_before_segment": 50,
+                "timeout_ms": 10000
+            },
+            "deploy": {
+                "nstack": 8,
+                "ncluster": 16,
+                "nbattery_per_cluster": 0,
+                "temperature_pattern": "1,2,2,2,2,1,1,1,1,1"
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_segments": false,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": false,
+                "debug_log": false
+            }
+        },
+        {
+            "enable": true,
+            "signature": {
+                "type": "BMS",
+                "id": 17,
+                "name": "bms_17",
+                "comment": "",
+                "model": "Svolt L3"
+            },
+            "remote": {
+                "protocol": "modbus",
+                "mode": "tcp",
+                "host": "127.0.0.1",
+                "port": "5502",
+                "nspace": 1,
+                "period_ms": 5000,
+                "idle_before_segment": 50,
+                "timeout_ms": 10000
+            },
+            "deploy": {
+                "nstack": 8,
+                "ncluster": 16,
+                "nbattery_per_cluster": 0,
+                "temperature_pattern": "1,2,2,2,2,1,1,1,1,1"
+            },
+            "options": {
+                "sync_time": false,
+                "sync_data": true,
+                "store_segments": false,
+                "store_fields": true,
+                "store_alarms": true,
+                "commands": false,
+                "debug_log": false
+            }
+        }
+    ]
+}
