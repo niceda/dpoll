@@ -7,9 +7,9 @@ Thanks to [mbpoll](https://github.com/epsilonrt/mbpoll)
 # Install
 
 ```bash
-wget release.skiffenergy.com/pkg/dpoll.gz
-gunzip -c dpoll.gz > /usr/sbin/dpoll
-chmod +x /usr/sbin/dpoll
+wget release.skiffenergy.com/pkg/dpoll.gz &&
+gunzip -c dpoll.gz > /usr/sbin/dpoll &&
+chmod +x /usr/sbin/dpoll &&
 rm ./dpoll.gz
 ```
 
