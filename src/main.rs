@@ -509,7 +509,9 @@ fn check_args(args: &mut Args) -> Result<()> {
             args.mode = Some(Mode::Rtu);
         }
         DeviceType::Host => {
-            args.mode = Some(Mode::Tcp);
+            if args.mode.unwrap() == Mode::Rtu {
+                args.mode = Some(Mode::Tcp);
+            }
             if args.device.parse::<SocketAddr>().is_ok() {
                 let sd = args.device.parse::<SocketAddr>().unwrap();
                 args.device = sd.ip().to_string();
@@ -616,7 +618,7 @@ fn print_args(args: &Args) {
             args.timeout.unwrap().as_secs_f32(),
             args.poll_rate.unwrap()
         );
-    } else if args.mode == Some(Mode::Tcp) {
+    } else if args.mode == Some(Mode::Tcp) || args.mode == Some(Mode::RtuInTcp) {
         println!(
             "Communication.........: {}, port {}, t/o {:.2} s, poll rate {} ms",
             args.device.to_string().red(),
