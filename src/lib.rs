@@ -68,7 +68,6 @@ pub struct Args {
     /// -t 3:hex16    16-bit output(holding) register data type with hex display
     /// -t 3:bin16    16-bit output(holding) register data type with bin display
     /// -t 3:f32      32-bit float data type in output(holding) register table
-    /// -t 3:f32      32-bit float data type in output(holding) register table
     /// -t 4          16-bit input register data type (default)
     /// -t 4:i16      16-bit integer data type in input register table
     /// -t 4:i32      32-bit integer data type in input register table
