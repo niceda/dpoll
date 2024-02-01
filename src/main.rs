@@ -540,6 +540,10 @@ fn check_args(args: &mut Args) -> Result<()> {
                 if device.remote.mode.to_lowercase() == "rtu" {
                     args.mode = Some(Mode::Rtu);
                     args.device = device.remote.device.clone().unwrap();
+                    if device.remote.slave_id.is_some() {
+                        args.slave.clear();
+                        args.slave.push(device.remote.slave_id.unwrap());
+                    }
                     if device.remote.baud.is_some() {
                         args.baudrate = Some(device.remote.baud.unwrap());
                     }
@@ -560,6 +564,10 @@ fn check_args(args: &mut Args) -> Result<()> {
                 } else if device.remote.mode.to_lowercase() == "tcp" {
                     args.mode = Some(Mode::Tcp);
                     args.device = device.remote.host.clone().unwrap();
+                    if device.remote.slave_id.is_some() {
+                        args.slave.clear();
+                        args.slave.push(device.remote.slave_id.unwrap());
+                    }
                     if device.remote.port.is_some() {
                         args.port =
                             Some(device.remote.port.clone().unwrap().parse::<u16>().unwrap());
@@ -572,6 +580,10 @@ fn check_args(args: &mut Args) -> Result<()> {
                 } else if device.remote.mode.to_lowercase() == "rtu_in_tcp" {
                     args.mode = Some(Mode::RtuInTcp);
                     args.device = device.remote.host.clone().unwrap();
+                    if device.remote.slave_id.is_some() {
+                        args.slave.clear();
+                        args.slave.push(device.remote.slave_id.unwrap());
+                    }
                     if device.remote.port.is_some() {
                         args.port =
                             Some(device.remote.port.clone().unwrap().parse::<u16>().unwrap());
