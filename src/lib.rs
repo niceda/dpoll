@@ -65,14 +65,23 @@ pub struct Args {
     /// -t 1          Discrete input data type (binary 0 or 1)
     /// -t 3          16-bit output(holding) register data type
     /// -t 3:i16      16-bit integer data type in output(holding) register table
+    /// -t 3:u16      16-bit unsigned integer data type in output(holding) register table
+    /// -t 3:i32      32-bit integer data type in output(holding) register table
+    /// -t 3:u32      32-bit unsigned integer data type in output(holding) register table
     /// -t 3:hex16    16-bit output(holding) register data type with hex display
+    /// -t 3:hex32    32-bit output(holding) register data type with hex display
     /// -t 3:bin16    16-bit output(holding) register data type with bin display
+    /// -t 3:bin32    32-bit output(holding) register data type with bin display
     /// -t 3:f32      32-bit float data type in output(holding) register table
     /// -t 4          16-bit input register data type (default)
     /// -t 4:i16      16-bit integer data type in input register table
+    /// -t 4:u16      16-bit unsigned integer data type in input register table
     /// -t 4:i32      32-bit integer data type in input register table
+    /// -t 4:u32      32-bit unsigned integer data type in input register table
     /// -t 4:hex16    16-bit input register data type with hex display
+    /// -t 4:hex32    32-bit input register data type with hex display
     /// -t 4:bin16    16-bit input register data type with bin display
+    /// -t 4:bin32    32-bit input register data type with bin display
     /// -t 4:f32      32-bit float data type in input register table
     #[clap(short, long, default_value = "3", verbatim_doc_comment)]
     #[arg(value_parser = parse_type)]

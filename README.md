@@ -29,7 +29,8 @@ Arguments:
           List of values to be written.
 
 Options:
-  -m, --mode <MODE>            mode (tcp, rtu, rtu-in-tcp, iec104) iec104 is not supported yet [default: tcp] [possible values: tcp, rtu, rtu-in-tcp, iec104]
+  -m, --mode <MODE>            mode (tcp, rtu, rtu-in-tcp, iec104) iec104 is not supported yet [default: tcp] [possible values: tcp, rtu, rt
+u-in-tcp, iec104]
   -r, --reference <REFERENCE>  Start reference (supported dec/hex/bin three formats) [default: 0]
   -a, --slave <SLAVE>          Slave address (1-255 for rtu, 0-255 for tcp) for reading, [default: 1]
   -c, --count <COUNT>          Number of values to read (1-125) [default: 1]
@@ -83,7 +84,9 @@ dpoll em2_0 -t 4:hex32 -r 0 -c 10 -vvvv
 # TODO
 
 - [ ] `-v` 显示协议接收字节信息
+- [ ] 支持 IEC104
+- [ ] 支持 DLT645
+- [ ] 支持 `i64/u64/hex64/bin64/f64`
 - [ ] `-u`
 - [ ] `-R`
 - [ ] `-F`
-- [ ] 支持 IEC104
