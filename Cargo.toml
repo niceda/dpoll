@@ -11,9 +11,14 @@ clap = { version = "4.4.11", features = ["derive"] }
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
 tokio = "1.35.0"
-tokio-modbus = { version = "0.9.0", default_features = true, features = ["rtu-sync", "tcp-sync"] }
+tokio-modbus = { git = "https://github.com/niceda/tokio-modbus", branch = "main", version = "*", default_features = true, features = [
+  "rtu-sync",
+  "tcp-sync",
+  "tcp-server",
+  # "rtu-server"
+] }
 tokio-serial = "5.4.4"
-futures = "0.3.29"
+futures = "0.3.30"
 ctrlc = "3.4.1"
 # tracing = "0.1.40"
 # tracing-subscriber = "0.3.18"
