@@ -149,7 +149,17 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                     // check_args already checked Formats::I32
                     let wd = writevalues
                         .iter()
-                        .map(|v| v.parse::<u32>().unwrap())
+                        .map(|v| {
+                            if v.parse::<u32>().is_ok() {
+                                v.parse::<u32>().unwrap()
+                            } else if v.starts_with("0x")
+                                && u32::from_str_radix(v.trim_start_matches("0x"), 16).is_ok()
+                            {
+                                u32::from_str_radix(v.trim_start_matches("0x"), 16).unwrap()
+                            } else {
+                                u32::from_str_radix(v.trim_start_matches("0b"), 2).unwrap()
+                            }
+                        })
                         .collect::<Vec<u32>>();
 
                     let wd = wd.iter().fold(Vec::new(), |mut acc, v| {
@@ -467,8 +477,10 @@ fn check_args(args: &mut Args) -> Result<()> {
                 Formats::U32 | Formats::Hex32 | Formats::Bin32 => {
                     for v in args.writevalues.clone().unwrap() {
                         if v.parse::<u32>().is_err()
-                            || u32::from_str_radix(v.trim_start_matches("0x"), 16).is_err()
-                            || u32::from_str_radix(v.trim_start_matches("0b"), 2).is_err()
+                            && (v.starts_with("0x")
+                                && u32::from_str_radix(v.trim_start_matches("0x"), 16).is_err())
+                            && (v.starts_with("0b")
+                                && u32::from_str_radix(v.trim_start_matches("0b"), 2).is_err())
                         {
                             Err(anyhow::anyhow!("Write value {} must be u32/hex32/bin32", v))?;
                         }
