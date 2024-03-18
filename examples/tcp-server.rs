@@ -44,6 +44,7 @@ impl tokio_modbus::server::Service for ExampleService {
                 }
             }
             Request::WriteMultipleRegisters(addr, values) => {
+                println!("SERVER: WriteMultipleRegisters: {addr} {values:?}");
                 match register_write(&mut self.holding_registers.lock().unwrap(), addr, &values) {
                     Ok(_) => future::ready(Ok(Response::WriteMultipleRegisters(
                         addr,
@@ -53,6 +54,7 @@ impl tokio_modbus::server::Service for ExampleService {
                 }
             }
             Request::WriteSingleRegister(addr, value) => {
+                println!("SERVER: WriteSingleRegister: {addr} {value}");
                 match register_write(
                     &mut self.holding_registers.lock().unwrap(),
                     addr,
@@ -76,11 +78,75 @@ impl ExampleService {
         let mut input_registers = HashMap::new();
         input_registers.insert(0, 1234);
         input_registers.insert(1, 5678);
+
+        let f32 = 1.1_f32;
+        let data_f32 = f32.to_be_bytes();
+        input_registers.insert(2, u16::from_be_bytes(data_f32[0..2].try_into().unwrap()));
+        input_registers.insert(3, u16::from_be_bytes(data_f32[2..4].try_into().unwrap()));
+
+        let f32abcd = 1.3_f32;
+        let data_f32abcd = f32abcd.to_be_bytes();
+        input_registers.insert(
+            4,
+            u16::from_be_bytes(data_f32abcd[0..2].try_into().unwrap()),
+        );
+        input_registers.insert(
+            5,
+            u16::from_be_bytes(data_f32abcd[2..4].try_into().unwrap()),
+        );
+
+        let f32badc = 1.3_f32;
+        let data_f32badc = f32badc.to_be_bytes();
+        input_registers.insert(6, u16::from_be_bytes([data_f32badc[1], data_f32badc[0]]));
+        input_registers.insert(7, u16::from_be_bytes([data_f32badc[3], data_f32badc[2]]));
+
+        let f32dcba = 1.4_f32;
+        let data_f32dcba = f32dcba.to_be_bytes();
+        input_registers.insert(8, u16::from_be_bytes([data_f32dcba[3], data_f32dcba[2]]));
+        input_registers.insert(9, u16::from_be_bytes([data_f32dcba[1], data_f32dcba[0]]));
+
+        let f32cdab = 1.5_f32;
+        let data_f32cdab = f32cdab.to_be_bytes();
+        input_registers.insert(10, u16::from_be_bytes([data_f32cdab[2], data_f32cdab[3]]));
+        input_registers.insert(11, u16::from_be_bytes([data_f32cdab[0], data_f32cdab[1]]));
+
         let mut holding_registers = HashMap::new();
-        holding_registers.insert(0, 10);
-        holding_registers.insert(1, 20);
-        holding_registers.insert(2, 30);
-        holding_registers.insert(3, 40);
+        let u32 = 40_u32;
+        let data_u32 = u32.to_be_bytes();
+        holding_registers.insert(0, u16::from_be_bytes(data_u32[0..2].try_into().unwrap()));
+        holding_registers.insert(1, u16::from_be_bytes(data_u32[2..4].try_into().unwrap()));
+
+        let f32 = 1.1_f32;
+        let data_f32 = f32.to_be_bytes();
+        holding_registers.insert(2, u16::from_be_bytes(data_f32[0..2].try_into().unwrap()));
+        holding_registers.insert(3, u16::from_be_bytes(data_f32[2..4].try_into().unwrap()));
+
+        let f32abcd = 1.2_f32;
+        let data_f32abcd = f32abcd.to_be_bytes();
+        holding_registers.insert(
+            4,
+            u16::from_be_bytes(data_f32abcd[0..2].try_into().unwrap()),
+        );
+        holding_registers.insert(
+            5,
+            u16::from_be_bytes(data_f32abcd[2..4].try_into().unwrap()),
+        );
+
+        let f32badc = 1.3_f32;
+        let data_f32badc = f32badc.to_be_bytes();
+        holding_registers.insert(6, u16::from_be_bytes([data_f32badc[1], data_f32badc[0]]));
+        holding_registers.insert(7, u16::from_be_bytes([data_f32badc[3], data_f32badc[2]]));
+
+        let f32dcba = 1.4_f32;
+        let data_f32dcba = f32dcba.to_be_bytes();
+        holding_registers.insert(8, u16::from_be_bytes([data_f32dcba[3], data_f32dcba[2]]));
+        holding_registers.insert(9, u16::from_be_bytes([data_f32dcba[1], data_f32dcba[0]]));
+
+        let f32cdab = 1.5_f32;
+        let data_f32cdab = f32cdab.to_be_bytes();
+        holding_registers.insert(10, u16::from_be_bytes([data_f32cdab[2], data_f32cdab[3]]));
+        holding_registers.insert(11, u16::from_be_bytes([data_f32cdab[0], data_f32cdab[1]]));
+
         Self {
             input_registers: Arc::new(Mutex::new(input_registers)),
             holding_registers: Arc::new(Mutex::new(holding_registers)),
@@ -119,6 +185,7 @@ fn register_write(
     for (i, value) in values.iter().enumerate() {
         let reg_addr = addr + i as u16;
         if let Some(r) = registers.get_mut(&reg_addr) {
+            println!("SERVER: Writing holding register {reg_addr} = {value}");
             *r = *value;
         } else {
             // TODO: Return a Modbus Exception response `IllegalDataAddress` https://github.com/slowtec/tokio-modbus/issues/165

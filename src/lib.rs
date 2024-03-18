@@ -73,6 +73,10 @@ pub struct Args {
     /// -t 3:bin16    16-bit output(holding) register data type with bin display
     /// -t 3:bin32    32-bit output(holding) register data type with bin display
     /// -t 3:f32      32-bit float data type in output(holding) register table
+    /// -t 3:f32abcd  32-bit float data type in output(holding) register table
+    /// -t 3:f32badc  32-bit float data type in output(holding) register table
+    /// -t 3:f32cdab  32-bit float data type in output(holding) register table
+    /// -t 3:f32dcba  32-bit float data type in output(holding) register table
     /// -t 4          16-bit input register data type (default)
     /// -t 4:i16      16-bit integer data type in input register table
     /// -t 4:u16      16-bit unsigned integer data type in input register table
@@ -83,6 +87,10 @@ pub struct Args {
     /// -t 4:bin16    16-bit input register data type with bin display
     /// -t 4:bin32    32-bit input register data type with bin display
     /// -t 4:f32      32-bit float data type in input register table
+    /// -t 4:f32abcd  32-bit float data type in input register table
+    /// -t 4:f32badc  32-bit float data type in input register table
+    /// -t 4:f32cdab  32-bit float data type in input register table
+    /// -t 4:f32dcba  32-bit float data type in input register table
     #[clap(short, long, default_value = "3", verbatim_doc_comment)]
     #[arg(value_parser = parse_type)]
     pub r#type: Option<Type>,
@@ -173,6 +181,10 @@ pub enum Formats {
     I32,
     U32,
     F32,
+    F32abcd,
+    F32badc,
+    F32cdab,
+    F32dcba,
     Hex16,
     Hex32,
     Bin16,
@@ -212,6 +224,10 @@ impl FromStr for Type {
                 "u32" => Formats::U32,
                 "i32" => Formats::I32,
                 "f32" => Formats::F32,
+                "f32abcd" => Formats::F32abcd,
+                "f32badc" => Formats::F32badc,
+                "f32cdab" => Formats::F32cdab,
+                "f32dcba" => Formats::F32dcba,
                 "bin16" => Formats::Bin16,
                 "bin32" => Formats::Bin32,
                 "string" => Err(anyhow::anyhow!("Unsupported format"))?,

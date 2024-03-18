@@ -84,6 +84,10 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
 
         if format == Formats::I32
             || format == Formats::F32
+            || format == Formats::F32abcd
+            || format == Formats::F32badc
+            || format == Formats::F32cdab
+            || format == Formats::F32dcba
             || format == Formats::U32
             || format == Formats::Hex32
             || format == Formats::Bin32
@@ -163,12 +167,13 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         .collect::<Vec<u32>>();
 
                     let wd = wd.iter().fold(Vec::new(), |mut acc, v| {
-                        if !args.little_endian {
-                            acc.push((v >> 16) as u16);
-                            acc.push((v & 0xFFFF) as u16);
+                        let data = v.to_be_bytes();
+                        if args.little_endian {
+                            acc.push(u16::from_be_bytes([data[2], data[3]]));
+                            acc.push(u16::from_be_bytes([data[0], data[1]]));
                         } else {
-                            acc.push((v & 0xFFFF) as u16);
-                            acc.push((v >> 16) as u16);
+                            acc.push(u16::from_be_bytes([data[0], data[1]]));
+                            acc.push(u16::from_be_bytes([data[2], data[3]]));
                         }
                         acc
                     });
@@ -182,15 +187,80 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         .collect::<Vec<u32>>();
 
                     let wd = wd.iter().fold(Vec::new(), |mut acc, v| {
-                        if !args.little_endian {
-                            acc.push((v >> 16) as u16);
-                            acc.push((v & 0xFFFF) as u16);
+                        let data = v.to_be_bytes();
+                        if args.little_endian {
+                            acc.push(u16::from_be_bytes([data[2], data[3]]));
+                            acc.push(u16::from_be_bytes([data[0], data[1]]));
                         } else {
-                            acc.push((v & 0xFFFF) as u16);
-                            acc.push((v >> 16) as u16);
+                            acc.push(u16::from_be_bytes([data[0], data[1]]));
+                            acc.push(u16::from_be_bytes([data[2], data[3]]));
                         }
                         acc
                     });
+                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                }
+                Formats::F32abcd => {
+                    let wd = writevalues
+                        .iter()
+                        .map(|v| v.parse::<f32>().unwrap())
+                        .map(|v| v.to_bits())
+                        .collect::<Vec<u32>>();
+
+                    let wd = wd.iter().fold(Vec::new(), |mut acc, v| {
+                        let data = v.to_be_bytes();
+                        acc.push(u16::from_be_bytes([data[0], data[1]]));
+                        acc.push(u16::from_be_bytes([data[2], data[3]]));
+                        acc
+                    });
+                    println!("good f32abcd");
+                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                }
+                Formats::F32cdab => {
+                    let wd = writevalues
+                        .iter()
+                        .map(|v| v.parse::<f32>().unwrap())
+                        .map(|v| v.to_bits())
+                        .collect::<Vec<u32>>();
+
+                    let wd = wd.iter().fold(Vec::new(), |mut acc, v| {
+                        let data = v.to_be_bytes();
+                        acc.push(u16::from_be_bytes([data[2], data[3]]));
+                        acc.push(u16::from_be_bytes([data[0], data[1]]));
+                        acc
+                    });
+                    println!("good f32cdab");
+                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                }
+                Formats::F32badc => {
+                    let wd = writevalues
+                        .iter()
+                        .map(|v| v.parse::<f32>().unwrap())
+                        .map(|v| v.to_bits())
+                        .collect::<Vec<u32>>();
+
+                    let wd = wd.iter().fold(Vec::new(), |mut acc, v| {
+                        let data = v.to_be_bytes();
+                        acc.push(u16::from_be_bytes([data[1], data[0]]));
+                        acc.push(u16::from_be_bytes([data[3], data[2]]));
+                        acc
+                    });
+                    println!("good f32badc");
+                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                }
+                Formats::F32dcba => {
+                    let wd = writevalues
+                        .iter()
+                        .map(|v| v.parse::<f32>().unwrap())
+                        .map(|v| v.to_bits())
+                        .collect::<Vec<u32>>();
+
+                    let wd = wd.iter().fold(Vec::new(), |mut acc, v| {
+                        let data = v.to_be_bytes();
+                        acc.push(u16::from_be_bytes([data[3], data[2]]));
+                        acc.push(u16::from_be_bytes([data[1], data[0]]));
+                        acc
+                    });
+                    println!("good f32dcba");
                     rs = ctx.write_multiple_registers(reference[0], &wd);
                 }
                 Formats::String => {
@@ -389,6 +459,26 @@ fn print_read_value(
                     println!("{}", f32::from_bits(v));
                     addr += 2;
                 }
+                Formats::F32abcd => {
+                    let v = extract_data(&data, 2 * c, false);
+                    println!("{}", f32::from_bits(v));
+                    addr += 2;
+                }
+                Formats::F32badc => {
+                    let v = extract_data_32(&data, 2 * c, 1, 0, 3, 2);
+                    println!("{}", f32::from_bits(v));
+                    addr += 2;
+                }
+                Formats::F32cdab => {
+                    let v = extract_data(&data, 2 * c, true);
+                    println!("{}", f32::from_bits(v));
+                    addr += 2;
+                }
+                Formats::F32dcba => {
+                    let v = extract_data_32(&data, 2 * c, 3, 2, 1, 0);
+                    println!("{}", f32::from_bits(v));
+                    addr += 2;
+                }
                 Formats::Hex16 => {
                     println!("{:#04X}", data[c]);
                     addr += 1;
@@ -493,7 +583,11 @@ fn check_args(args: &mut Args) -> Result<()> {
                         }
                     }
                 }
-                Formats::F32 => {
+                Formats::F32
+                | Formats::F32abcd
+                | Formats::F32cdab
+                | Formats::F32badc
+                | Formats::F32dcba => {
                     for v in args.writevalues.clone().unwrap() {
                         if v.parse::<f32>().is_err() {
                             Err(anyhow::anyhow!("Write value {} must be float", v))?;
@@ -543,7 +637,8 @@ fn check_args(args: &mut Args) -> Result<()> {
 
             if d.is_empty() {
                 Err(anyhow::anyhow!("No device found"))?;
-            } else if d.len() > 1 {
+            }
+            if d.len() > 1 {
                 Err(anyhow::anyhow!("Multiple devices found: {:?}", d))?;
             }
 
@@ -608,9 +703,10 @@ fn check_args(args: &mut Args) -> Result<()> {
                 } else {
                     Err(anyhow::anyhow!("Unsupported mode:{}", device.remote.mode))?;
                 }
-            } else if device.remote.protocol.to_lowercase() == "iec104" {
-                Err(anyhow::anyhow!("iec104 protocol isn't supported yet"))?;
             } else {
+                if device.remote.protocol.to_lowercase() == "iec104" {
+                    Err(anyhow::anyhow!("iec104 protocol isn't supported yet"))?;
+                }
                 Err(anyhow::anyhow!(
                     "Unsupported protocol:{}",
                     device.remote.protocol
@@ -661,17 +757,16 @@ fn print_args(args: &Args) {
 }
 
 fn extract_data(data: &[u16], pos: usize, little_endian: bool) -> u32 {
-    let mut v;
     if little_endian {
-        v = data[pos + 1] as u32;
-        v <<= 16;
-        v += data[pos] as u32;
+        extract_data_32(data, pos, 2, 3, 0, 1)
     } else {
-        v = data[pos] as u32;
-        v <<= 16;
-        v += data[pos + 1] as u32;
+        extract_data_32(data, pos, 0, 1, 2, 3)
     }
-    v
+}
+
+fn extract_data_32(data: &[u16], pos: usize, a: usize, b: usize, c: usize, d: usize) -> u32 {
+    let data = [data[pos].to_be_bytes(), data[pos + 1].to_be_bytes()].concat();
+    u32::from_be_bytes([data[a], data[b], data[c], data[d]])
 }
 
 #[cfg(test)]
