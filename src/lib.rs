@@ -294,9 +294,11 @@ pub struct Signature {
     pub name: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Remote {
+    #[serde(default = "default_protocol")]
     pub protocol: String,
+    #[serde(default = "default_mode")]
     pub mode: String,
     pub host: Option<String>,
     pub port: Option<String>,
@@ -307,6 +309,32 @@ pub struct Remote {
     pub data_bit: Option<u8>,
     pub stop_bit: Option<u8>,
     pub timeout_ms: Option<u32>,
+}
+
+fn default_protocol() -> String {
+    "modbus".to_string()
+}
+
+fn default_mode() -> String {
+    "tcp".to_string()
+}
+
+impl Default for Remote {
+    fn default() -> Self {
+        Remote {
+            protocol: default_protocol(),
+            mode: "tcp".to_string(),
+            host: None,
+            port: None,
+            parity: None,
+            device: None,
+            baud: None,
+            slave_id: None,
+            data_bit: None,
+            stop_bit: None,
+            timeout_ms: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Default)]
