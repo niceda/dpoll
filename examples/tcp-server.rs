@@ -74,16 +74,19 @@ impl tokio_modbus::server::Service for ExampleService {
 
 impl ExampleService {
     fn new() -> Self {
-        // Insert some test data as register values.
+        // ==================================== INPUT REGISTERS ====================================
+        // u16
         let mut input_registers = HashMap::new();
         input_registers.insert(0, 1234);
         input_registers.insert(1, 5678);
 
+        // f32
         let f32 = 1.1_f32;
         let data_f32 = f32.to_be_bytes();
         input_registers.insert(2, u16::from_be_bytes(data_f32[0..2].try_into().unwrap()));
         input_registers.insert(3, u16::from_be_bytes(data_f32[2..4].try_into().unwrap()));
 
+        // f32abcd
         let f32abcd = 1.3_f32;
         let data_f32abcd = f32abcd.to_be_bytes();
         input_registers.insert(
@@ -95,21 +98,73 @@ impl ExampleService {
             u16::from_be_bytes(data_f32abcd[2..4].try_into().unwrap()),
         );
 
+        // f32badc
         let f32badc = 1.3_f32;
         let data_f32badc = f32badc.to_be_bytes();
         input_registers.insert(6, u16::from_be_bytes([data_f32badc[1], data_f32badc[0]]));
         input_registers.insert(7, u16::from_be_bytes([data_f32badc[3], data_f32badc[2]]));
 
+        // f32dcba
         let f32dcba = 1.4_f32;
         let data_f32dcba = f32dcba.to_be_bytes();
         input_registers.insert(8, u16::from_be_bytes([data_f32dcba[3], data_f32dcba[2]]));
         input_registers.insert(9, u16::from_be_bytes([data_f32dcba[1], data_f32dcba[0]]));
 
+        // f32cdab
         let f32cdab = 1.5_f32;
         let data_f32cdab = f32cdab.to_be_bytes();
         input_registers.insert(10, u16::from_be_bytes([data_f32cdab[2], data_f32cdab[3]]));
         input_registers.insert(11, u16::from_be_bytes([data_f32cdab[0], data_f32cdab[1]]));
 
+        // i32abcd
+        let i32abcd = 12_i32;
+        let data_i32abcd = i32abcd.to_be_bytes();
+        input_registers.insert(14, u16::from_be_bytes([data_i32abcd[0], data_i32abcd[1]]));
+        input_registers.insert(15, u16::from_be_bytes([data_i32abcd[2], data_i32abcd[3]]));
+
+        // i32badc
+        let i32badc = 14_i32;
+        let data_i32badc = i32badc.to_be_bytes();
+        input_registers.insert(14, u16::from_be_bytes([data_i32badc[1], data_i32badc[0]]));
+        input_registers.insert(15, u16::from_be_bytes([data_i32badc[3], data_i32badc[2]]));
+
+        // i32dcba
+        let i32dcba = 16_i32;
+        let data_i32dcba = i32dcba.to_be_bytes();
+        input_registers.insert(16, u16::from_be_bytes([data_i32dcba[3], data_i32dcba[2]]));
+        input_registers.insert(17, u16::from_be_bytes([data_i32dcba[1], data_i32dcba[0]]));
+
+        // i32cdab
+        let i32cdab = 18_i32;
+        let data_i32cdab = i32cdab.to_be_bytes();
+        input_registers.insert(18, u16::from_be_bytes([data_i32cdab[2], data_i32cdab[3]]));
+        input_registers.insert(19, u16::from_be_bytes([data_i32cdab[0], data_i32cdab[1]]));
+
+        // u32abcd
+        let u32abcd = 20_u32;
+        let data_u32abcd = u32abcd.to_be_bytes();
+        input_registers.insert(20, u16::from_be_bytes([data_u32abcd[0], data_u32abcd[1]]));
+        input_registers.insert(21, u16::from_be_bytes([data_u32abcd[2], data_u32abcd[3]]));
+
+        // u32badc
+        let u32badc = 22_u32;
+        let data_u32badc = u32badc.to_be_bytes();
+        input_registers.insert(22, u16::from_be_bytes([data_u32badc[1], data_u32badc[0]]));
+        input_registers.insert(23, u16::from_be_bytes([data_u32badc[3], data_u32badc[2]]));
+
+        // u32dcba
+        let u32dcba = 24_u32;
+        let data_u32dcba = u32dcba.to_be_bytes();
+        input_registers.insert(24, u16::from_be_bytes([data_u32dcba[1], data_u32dcba[0]]));
+        input_registers.insert(25, u16::from_be_bytes([data_u32dcba[3], data_u32dcba[2]]));
+
+        // u32cdab
+        let u32cdab = 26_u32;
+        let data_u32cdab = u32cdab.to_be_bytes();
+        input_registers.insert(26, u16::from_be_bytes([data_u32cdab[2], data_u32cdab[3]]));
+        input_registers.insert(27, u16::from_be_bytes([data_u32cdab[0], data_u32cdab[1]]));
+
+        // ==================================== HOLDING REGISTERS ====================================
         let mut holding_registers = HashMap::new();
         let u32 = 40_u32;
         let data_u32 = u32.to_be_bytes();
@@ -146,6 +201,54 @@ impl ExampleService {
         let data_f32cdab = f32cdab.to_be_bytes();
         holding_registers.insert(10, u16::from_be_bytes([data_f32cdab[2], data_f32cdab[3]]));
         holding_registers.insert(11, u16::from_be_bytes([data_f32cdab[0], data_f32cdab[1]]));
+
+        // i32abcd
+        let i32abcd = 12_i32;
+        let data_i32abcd = i32abcd.to_be_bytes();
+        holding_registers.insert(12, u16::from_be_bytes([data_i32abcd[0], data_i32abcd[1]]));
+        holding_registers.insert(13, u16::from_be_bytes([data_i32abcd[2], data_i32abcd[3]]));
+
+        // i32badc
+        let i32badc = 14_i32;
+        let data_i32badc = i32badc.to_be_bytes();
+        holding_registers.insert(14, u16::from_be_bytes([data_i32badc[1], data_i32badc[0]]));
+        holding_registers.insert(15, u16::from_be_bytes([data_i32badc[3], data_i32badc[2]]));
+
+        // i32dcba
+        let i32dcba = 16_i32;
+        let data_i32dcba = i32dcba.to_be_bytes();
+        holding_registers.insert(16, u16::from_be_bytes([data_i32dcba[3], data_i32dcba[2]]));
+        holding_registers.insert(17, u16::from_be_bytes([data_i32dcba[1], data_i32dcba[0]]));
+
+        // i32cdab
+        let i32cdab = 18_i32;
+        let data_i32cdab = i32cdab.to_be_bytes();
+        holding_registers.insert(18, u16::from_be_bytes([data_i32cdab[2], data_i32cdab[3]]));
+        holding_registers.insert(19, u16::from_be_bytes([data_i32cdab[0], data_i32cdab[1]]));
+
+        // u32abcd
+        let u32abcd = 20_u32;
+        let data_u32abcd = u32abcd.to_be_bytes();
+        holding_registers.insert(20, u16::from_be_bytes([data_u32abcd[0], data_u32abcd[1]]));
+        holding_registers.insert(21, u16::from_be_bytes([data_u32abcd[2], data_u32abcd[3]]));
+
+        // u32badc
+        let u32badc = 22_u32;
+        let data_u32badc = u32badc.to_be_bytes();
+        holding_registers.insert(22, u16::from_be_bytes([data_u32badc[1], data_u32badc[0]]));
+        holding_registers.insert(23, u16::from_be_bytes([data_u32badc[3], data_u32badc[2]]));
+
+        // u32dcba
+        let u32dcba = 24_u32;
+        let data_u32dcba = u32dcba.to_be_bytes();
+        holding_registers.insert(24, u16::from_be_bytes([data_u32dcba[1], data_u32dcba[0]]));
+        holding_registers.insert(25, u16::from_be_bytes([data_u32dcba[3], data_u32dcba[2]]));
+
+        // u32cdab
+        let u32cdab = 26_u32;
+        let data_u32cdab = u32cdab.to_be_bytes();
+        holding_registers.insert(26, u16::from_be_bytes([data_u32cdab[2], data_u32cdab[3]]));
+        holding_registers.insert(27, u16::from_be_bytes([data_u32cdab[0], data_u32cdab[1]]));
 
         Self {
             input_registers: Arc::new(Mutex::new(input_registers)),
@@ -215,7 +318,8 @@ async fn server_context(socket_addr: SocketAddr) -> anyhow::Result<()> {
     println!("Starting up server on {socket_addr}");
     let listener = TcpListener::bind(socket_addr).await?;
     let server = Server::new(listener);
-    let new_service = |_socket_addr| Ok(Some(ExampleService::new()));
+    let example_service = Arc::new(ExampleService::new());
+    let new_service = |_socket_addr| Ok(Some(example_service.clone()));
     let on_connected = |stream, socket_addr| async move {
         accept_tcp_connection(stream, socket_addr, new_service)
     };

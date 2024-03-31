@@ -67,7 +67,15 @@ pub struct Args {
     /// -t 3:i16      16-bit integer data type in output(holding) register table
     /// -t 3:u16      16-bit unsigned integer data type in output(holding) register table
     /// -t 3:i32      32-bit integer data type in output(holding) register table
+    /// -t 3:i32abcd  32-bit integer data type in output(holding) register table
+    /// -t 3:i32badc  32-bit integer data type in output(holding) register table
+    /// -t 3:i32cdab  32-bit integer data type in output(holding) register table
+    /// -t 3:i32dcba  32-bit integer data type in output(holding) register table
     /// -t 3:u32      32-bit unsigned integer data type in output(holding) register table
+    /// -t 3:u32abcd  32-bit unsigned integer data type in output(holding) register table
+    /// -t 3:u32badc  32-bit unsigned integer data type in output(holding) register table
+    /// -t 3:u32cdab  32-bit unsigned integer data type in output(holding) register table
+    /// -t 3:u32dcba  32-bit unsigned integer data type in output(holding) register table
     /// -t 3:hex16    16-bit output(holding) register data type with hex display
     /// -t 3:hex32    32-bit output(holding) register data type with hex display
     /// -t 3:bin16    16-bit output(holding) register data type with bin display
@@ -179,7 +187,15 @@ pub enum Formats {
     U16,
     I16,
     I32,
+    I32abcd,
+    I32badc,
+    I32cdab,
+    I32dcba,
     U32,
+    U32abcd,
+    U32badc,
+    U32cdab,
+    U32dcba,
     F32,
     F32abcd,
     F32badc,
@@ -221,8 +237,16 @@ impl FromStr for Type {
                 "i16" => Formats::I16,
                 "hex16" => Formats::Hex16,
                 "hex32" => Formats::Hex32,
-                "u32" => Formats::U32,
                 "i32" => Formats::I32,
+                "i32abcd" => Formats::I32abcd,
+                "i32badc" => Formats::I32badc,
+                "i32cdab" => Formats::I32cdab,
+                "i32dcba" => Formats::I32dcba,
+                "u32" => Formats::U32,
+                "u32abcd" => Formats::U32abcd,
+                "u32badc" => Formats::U32badc,
+                "u32cdab" => Formats::U32cdab,
+                "u32dcba" => Formats::U32dcba,
                 "f32" => Formats::F32,
                 "f32abcd" => Formats::F32abcd,
                 "f32badc" => Formats::F32badc,
