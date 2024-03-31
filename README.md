@@ -1,10 +1,10 @@
-# dpoll
+# [dpoll](https://git-inf.skiffenergy.com/xiongdajun/dpoll)
 
 Modbus Master Simulator. It allows to read and write in Modbus slave registers.
 
 Thanks to [mbpoll](https://github.com/epsilonrt/mbpoll)
 
-# Install
+# Install/Update
 
 ```bash
 wget release.skiffenergy.com/pkg/dpoll.gz &&
@@ -29,8 +29,7 @@ Arguments:
           List of values to be written.
 
 Options:
-  -m, --mode <MODE>            mode (tcp, rtu, rtu-in-tcp, iec104) iec104 is not supported yet [default: tcp] [possible values: tcp, rtu, rt
-u-in-tcp, iec104]
+  -m, --mode <MODE>            mode (tcp, rtu, rtu-in-tcp, iec104) iec104 is not supported yet [default: tcp] [possible values: tcp, rtu, rtu-in-tcp, iec104]
   -r, --reference <REFERENCE>  Start reference (supported dec/hex/bin three formats) [default: 0]
   -a, --slave <SLAVE>          Slave address (1-255 for rtu, 0-255 for tcp) for reading, [default: 1]
   -c, --count <COUNT>          Number of values to read (1-125) [default: 1]
@@ -44,8 +43,8 @@ u-in-tcp, iec104]
   -d <DATABITS>                Databits (7 or 8, 8 for RTU) [default: 8]
   -s <STOPBITS>                Stopbits (1 or 2) [default: 1]
   -P <PARITY>                  Parity (none, even, odd) [default: none]
-  -v, --verbose...             More output per occurrence
-  -q, --quiet...               Less output per occurrence
+  -v, --verbose...             Increase logging verbosity
+  -q, --quiet...               Decrease logging verbosity
       --conf <CONF>            The path to the configuration file [default: /home/work/deploy/device/conf/device_list.json]
   -h, --help                   Print help (see more with '--help')
   -V, --version                Print version
@@ -56,7 +55,7 @@ u-in-tcp, iec104]
 - 支持透传 ( `rtu-in-tcp` )
 - 支持从 `device_list.json` 读取设备配置, 无需手动输入 `IP` 、 `端口` 、`串口信息` 等
 - `host` 输入格式支持 `ip:port` 或 `ip`
-- 更多的输出格式，支持 `bin16 bin32 hex16 hex32`
+- 更多的输出格式，支持 `bin16 bin32 hex16 hex32 i32abcd i32badc i32cdab i32dcba u32abcd u32badc u32cdab u32dcba f32abcd f32badc f32cdab f32dcba`
 - 彩色提示/输出
 
 # Break Changes
@@ -83,7 +82,7 @@ dpoll em2_0 -t 4:hex32 -r 0 -c 10 -vvvv
 
 # TODO
 
-- [ ] `-v` 显示协议接收字节信息
+- [x] `-vvvv` 显示协议接收字节信息
 - [ ] 支持 IEC104
 - [ ] 支持 DLT645
 - [ ] 支持 `i64/u64/hex64/bin64/f64`
