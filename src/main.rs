@@ -21,7 +21,8 @@ lazy_static! {
     static ref ERROR_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let mut args = Args::parse();
 
     check_args(&mut args)?;
@@ -333,7 +334,6 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[2], data[3]]));
                         acc
                     });
-                    println!("good f32abcd");
                     rs = ctx.write_multiple_registers(reference[0], &wd);
                 }
                 Formats::F32cdab => {
@@ -349,7 +349,6 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[0], data[1]]));
                         acc
                     });
-                    println!("good f32cdab");
                     rs = ctx.write_multiple_registers(reference[0], &wd);
                 }
                 Formats::F32badc => {
@@ -365,7 +364,6 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[3], data[2]]));
                         acc
                     });
-                    println!("good f32badc");
                     rs = ctx.write_multiple_registers(reference[0], &wd);
                 }
                 Formats::F32dcba => {
@@ -381,7 +379,6 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[1], data[0]]));
                         acc
                     });
-                    println!("good f32dcba");
                     rs = ctx.write_multiple_registers(reference[0], &wd);
                 }
                 Formats::String => {

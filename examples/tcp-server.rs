@@ -205,8 +205,8 @@ impl ExampleService {
         // i32abcd
         let i32abcd = 12_i32;
         let data_i32abcd = i32abcd.to_be_bytes();
-        holding_registers.insert(12, u16::from_be_bytes([data_i32abcd[0], data_i32abcd[1]]));
-        holding_registers.insert(13, u16::from_be_bytes([data_i32abcd[2], data_i32abcd[3]]));
+        holding_registers.insert(14, u16::from_be_bytes([data_i32abcd[0], data_i32abcd[1]]));
+        holding_registers.insert(15, u16::from_be_bytes([data_i32abcd[2], data_i32abcd[3]]));
 
         // i32badc
         let i32badc = 14_i32;
