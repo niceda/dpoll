@@ -1,6 +1,6 @@
 # [dpoll](https://git-inf.skiffenergy.com/xiongdajun/dpoll)
 
-Modbus/IEC104 Client Simulator. It allows to read and write in Modbus slave registers and IEC104.
+Modbus/IEC104 Client Simulator. It allow you to read and write in Modbus slave registers and IEC104.
 
 Thanks to [mbpoll](https://github.com/epsilonrt/mbpoll)
 
@@ -64,8 +64,8 @@ Options:
   -t, --type <TYPE>
           which data type should be read
 
-          -t 0          Discrete output (coil) data type (binary 0 or 1)
-          -t 1          Discrete input data type (binary 0 or 1)
+          -t 1          Discrete output (coil) data type (binary 0 or 1)
+          -t 2          Discrete input data type (binary 0 or 1)
           -t 3          16-bit output(holding) register data type
           -t 3:i16      16-bit integer data type in output(holding) register table
           -t 3:u16      16-bit unsigned integer data type in output(holding) register table
@@ -102,6 +102,12 @@ Options:
           -t 4:f32badc  32-bit float data type in input register table
           -t 4:f32cdab  32-bit float data type in input register table
           -t 4:f32dcba  32-bit float data type in input register table
+          -t siq        IEC104 Single Point Info 单点信息
+          -t diq        IEC104 Double Point Info 双点信息
+          -t nva        IEC104 Measured Value Normal Info 测量值,规一化值
+          -t sva        IEC104 Measured Value Scaled Info 测量值,标度化值
+          -t r          IEC104 Measured Value Float Info 测量值,短浮点数
+          -t bcr        IEC104 Binary Counter Reading Info 累计量
 
           [default: 3]
 
