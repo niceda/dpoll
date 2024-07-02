@@ -911,7 +911,7 @@ dependencies = [
 [[package]]
 name = "tokio-iecp5"
 version = "0.1.0"
-source = "git+https://github.com/niceda/tokio-iecp5.git?branch=main#78b5d3f9006f026430a38b66aa64f1164bd78192"
+source = "git+https://github.com/niceda/tokio-iecp5.git?branch=main#5aacd5caa53986c5a95255c933a4ea4be876845e"
 dependencies = [
  "anyhow",
  "bit-struct",
