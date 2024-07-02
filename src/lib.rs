@@ -9,7 +9,7 @@ use clap::{Parser, ValueEnum};
 use clap_verbosity_flag::Verbosity;
 use serde::{Deserialize, Serialize};
 
-pub mod sync;
+pub mod iec104_client;
 
 pub enum DeviceType {
     Device,
@@ -18,10 +18,10 @@ pub enum DeviceType {
 }
 
 #[derive(Debug, Clone, Parser)]
-#[command(author, version, about="Modbus Master Simulator", long_about = None)]
+#[command(author, version, about="Modbus/IEC104 Master Simulator", long_about = None)]
 pub struct Args {
     /// DEVICE: Serial port when using ModBus RTU protocol.
-    /// HOST: Host name or dotted IP address when using ModBus/TCP
+    /// HOST: Host name or dotted IP address when using ModBus/TCP or IEC104
     /// NAME: Name of the device in the configuration file
     ///
     /// DEVICE: COM1, COM2 ... on Windows. /dev/ttyS0, /dev/ttyS1 ...  on Linux. /dev/ser1, /dev/ser2 ...    on QNX
@@ -39,7 +39,7 @@ pub struct Args {
     #[arg(group = "input", verbatim_doc_comment)]
     pub writevalues: Option<Vec<String>>,
 
-    /// mode (tcp, rtu, rtu-in-tcp, iec104) iec104 is not supported yet
+    /// mode (tcp, rtu, rtu-in-tcp, iec104)
     #[clap(short, long, default_value = "tcp")]
     pub mode: Option<Mode>,
 
@@ -61,8 +61,8 @@ pub struct Args {
 
     /// which data type should be read
     ///
-    /// -t 0          Discrete output (coil) data type (binary 0 or 1)
-    /// -t 1          Discrete input data type (binary 0 or 1)
+    /// -t 1          Discrete output (coil) data type (binary 0 or 1)
+    /// -t 2          Discrete input data type (binary 0 or 1)
     /// -t 3          16-bit output(holding) register data type
     /// -t 3:i16      16-bit integer data type in output(holding) register table
     /// -t 3:u16      16-bit unsigned integer data type in output(holding) register table
@@ -99,6 +99,12 @@ pub struct Args {
     /// -t 4:f32badc  32-bit float data type in input register table
     /// -t 4:f32cdab  32-bit float data type in input register table
     /// -t 4:f32dcba  32-bit float data type in input register table
+    /// -t siq        IEC104 Single Point Info 单点信息
+    /// -t diq        IEC104 Double Point Info 双点信息
+    /// -t nva        IEC104 Measured Value Normal Info 测量值,规一化值
+    /// -t sva        IEC104 Measured Value Scaled Info 测量值,标度化值
+    /// -t r          IEC104 Measured Value Float Info 测量值,短浮点数
+    /// -t bcr        IEC104 Binary Counter Reading Info 累计量
     #[clap(short, long, default_value = "3", verbatim_doc_comment)]
     #[arg(value_parser = parse_type)]
     pub r#type: Option<Type>,
@@ -179,7 +185,12 @@ pub enum Functions {
     DiscreteInput,
     InputRegister,
     HoldingRegister,
-    Unknown = -1,
+    Siq,
+    Diq,
+    Nva,
+    Sva,
+    R,
+    Bcr,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -206,7 +217,6 @@ pub enum Formats {
     Bin16,
     Bin32,
     String,
-    Unknown = -1,
 }
 
 #[derive(Debug, Clone)]
@@ -220,18 +230,11 @@ impl FromStr for Type {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let function;
-        let format;
+        let mut format;
         if s.contains(':') {
             let mut iter = s.split(':');
             let function_str = iter.next().unwrap();
             let format_str = iter.next().unwrap();
-            function = match function_str {
-                "0" => Functions::Coil,
-                "1" => Functions::DiscreteInput,
-                "3" => Functions::HoldingRegister,
-                "4" => Functions::InputRegister,
-                _ => Err(anyhow::anyhow!("Unsupported function"))?,
-            };
             format = match format_str {
                 "u16" => Formats::U16,
                 "i16" => Formats::I16,
@@ -258,18 +261,50 @@ impl FromStr for Type {
                 _ => Err(anyhow::anyhow!("Unsupported format"))?,
             };
 
-            if (function == Functions::Coil || function == Functions::DiscreteInput)
-                && format != Formats::Bin16
-            {
-                Err(anyhow::anyhow!("Coil and DiscreteInput only supported Bin"))?;
-            }
-        } else {
-            function = match s {
-                "0" => {
+            function = match function_str {
+                "1" => {
                     format = Formats::Bin16;
                     Functions::Coil
                 }
+                "2" => {
+                    format = Formats::Bin16;
+                    Functions::DiscreteInput
+                }
+                "3" => Functions::HoldingRegister,
+                "4" => Functions::InputRegister,
+                "siq" => {
+                    format = Formats::Bin16;
+                    Functions::Siq
+                }
+                "diq" => {
+                    format = Formats::U16;
+                    Functions::Diq
+                }
+                "nva" => {
+                    format = Formats::I16;
+                    Functions::Nva
+                }
+                "sva" => {
+                    format = Formats::I16;
+                    Functions::Sva
+                }
+                "r" => {
+                    format = Formats::F32;
+                    Functions::R
+                }
+                "bcr" => {
+                    format = Formats::I32;
+                    Functions::Bcr
+                }
+                _ => Err(anyhow::anyhow!("Unsupported function"))?,
+            };
+        } else {
+            function = match s {
                 "1" => {
+                    format = Formats::Bin16;
+                    Functions::Coil
+                }
+                "2" => {
                     format = Formats::Bin16;
                     Functions::DiscreteInput
                 }
@@ -280,6 +315,30 @@ impl FromStr for Type {
                 "4" => {
                     format = Formats::U16;
                     Functions::InputRegister
+                }
+                "siq" => {
+                    format = Formats::Bin16;
+                    Functions::Siq
+                }
+                "diq" => {
+                    format = Formats::U16;
+                    Functions::Diq
+                }
+                "nva" => {
+                    format = Formats::I16;
+                    Functions::Nva
+                }
+                "sva" => {
+                    format = Formats::I16;
+                    Functions::Sva
+                }
+                "r" => {
+                    format = Formats::F32;
+                    Functions::R
+                }
+                "bcr" => {
+                    format = Formats::I32;
+                    Functions::Bcr
                 }
                 _ => {
                     format = Formats::U16;

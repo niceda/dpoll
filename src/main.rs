@@ -1,7 +1,9 @@
 use anyhow::Result;
 use clap::Parser;
 use colored::Colorize;
-use dpoll::{sync::rtuintcp, Args, Device, DeviceList, DeviceType, Formats, Functions, Mode};
+use dpoll::{
+    iec104_client::IEC104Client, Args, Device, DeviceList, DeviceType, Formats, Functions, Mode,
+};
 use lazy_static::lazy_static;
 use std::{
     fs::File,
@@ -13,7 +15,8 @@ use std::{
     },
     time::Duration,
 };
-use tokio_modbus::prelude::*;
+use tokio_modbus::{client::rtu_over_tcp, prelude::*};
+use tokio_serial::SerialStream;
 
 lazy_static! {
     static ref TRANSMIT_COUNT: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
@@ -37,7 +40,7 @@ async fn main() -> Result<()> {
 
     let argsc = args.clone();
     ctrlc::set_handler(move || {
-        if !argsc.once && argsc.writevalues.is_none() {
+        if !argsc.once && argsc.writevalues.is_none() && argsc.mode.unwrap() != Mode::IEC104 {
             let tc = TRANSMIT_COUNT.load(std::sync::atomic::Ordering::Relaxed);
             let rc = RECEIVE_COUNT.load(std::sync::atomic::Ordering::Relaxed);
             let ec = ERROR_COUNT.load(std::sync::atomic::Ordering::Relaxed);
@@ -48,7 +51,7 @@ async fn main() -> Result<()> {
                 tc,
                 rc,
                 ec,
-                (tc - rc) as f32 / tc as f32 * 100.0
+                (tc as f32 - rc as f32) / tc as f32 * 100.0
             );
         }
         println!("everything was closed.\nHave a nice day !");
@@ -57,23 +60,23 @@ async fn main() -> Result<()> {
 
     match args.device_type() {
         DeviceType::Device => match args.mode.unwrap() {
-            Mode::Rtu => rtu_client(args)?,
+            Mode::Rtu => rtu_client(args).await?,
             Mode::Tcp => unreachable!(),
             Mode::RtuInTcp => unreachable!(),
-            Mode::IEC104 => todo!(),
+            Mode::IEC104 => unreachable!(),
         },
         _ => match args.mode.unwrap() {
-            Mode::Rtu => rtu_client(args)?,
-            Mode::Tcp => tcp_client(args)?,
-            Mode::RtuInTcp => rtu_in_tcp_client(args)?,
-            Mode::IEC104 => todo!(),
+            Mode::Tcp => tcp_client(args).await?,
+            Mode::Rtu => rtu_client(args).await?,
+            Mode::RtuInTcp => rtu_in_tcp_client(args).await?,
+            Mode::IEC104 => iec104_client(args).await?,
         },
     }
 
     Ok(())
 }
 
-fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
+async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
     loop {
         let writevalues = args.writevalues.clone();
         let function = args.r#type.clone().unwrap().function;
@@ -118,9 +121,9 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         .map(|v| v.parse::<bool>().unwrap())
                         .collect::<Vec<bool>>();
                     if wd.len() == 1 {
-                        rs = ctx.write_single_coil(reference[0], wd[0]);
+                        rs = ctx.write_single_coil(reference[0], wd[0]).await;
                     } else {
-                        rs = ctx.write_multiple_coils(reference[0], &wd);
+                        rs = ctx.write_multiple_coils(reference[0], &wd).await;
                     }
                 }
                 Formats::U16 | Formats::Bin16 | Formats::Hex16 => {
@@ -139,9 +142,9 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         })
                         .collect::<Vec<u16>>();
                     if wd.len() == 1 {
-                        rs = ctx.write_single_register(reference[0], wd[0]);
+                        rs = ctx.write_single_register(reference[0], wd[0]).await;
                     } else {
-                        rs = ctx.write_multiple_registers(reference[0], &wd);
+                        rs = ctx.write_multiple_registers(reference[0], &wd).await;
                     }
                 }
                 Formats::I16 => {
@@ -150,12 +153,14 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         .map(|v| v.parse::<i16>().unwrap())
                         .collect::<Vec<i16>>();
                     if wd.len() == 1 {
-                        rs = ctx.write_single_register(reference[0], wd[0] as u16);
+                        rs = ctx.write_single_register(reference[0], wd[0] as u16).await;
                     } else {
-                        rs = ctx.write_multiple_registers(
-                            reference[0],
-                            &wd.iter().map(|v| *v as u16).collect::<Vec<u16>>(),
-                        );
+                        rs = ctx
+                            .write_multiple_registers(
+                                reference[0],
+                                &wd.iter().map(|v| *v as u16).collect::<Vec<u16>>(),
+                            )
+                            .await;
                     }
                 }
                 Formats::I32 => {
@@ -173,7 +178,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::I32abcd => {
                     let wd = writevalues.iter().map(|v| v.parse::<i32>().unwrap()).fold(
@@ -185,7 +190,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::I32cdab => {
                     let wd = writevalues.iter().map(|v| v.parse::<i32>().unwrap()).fold(
@@ -197,7 +202,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::I32badc => {
                     let wd = writevalues.iter().map(|v| v.parse::<i32>().unwrap()).fold(
@@ -209,7 +214,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::I32dcba => {
                     let wd = writevalues.iter().map(|v| v.parse::<i32>().unwrap()).fold(
@@ -221,7 +226,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::U32 | Formats::Hex32 | Formats::Bin32 => {
                     // check_args already checked Formats::I32
@@ -251,7 +256,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         }
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::U32abcd => {
                     let wd = writevalues.iter().map(|v| v.parse::<u32>().unwrap()).fold(
@@ -263,7 +268,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::U32cdab => {
                     let wd = writevalues.iter().map(|v| v.parse::<u32>().unwrap()).fold(
@@ -275,7 +280,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::U32badc => {
                     let wd = writevalues.iter().map(|v| v.parse::<u32>().unwrap()).fold(
@@ -287,7 +292,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::U32dcba => {
                     let wd = writevalues.iter().map(|v| v.parse::<u32>().unwrap()).fold(
@@ -299,7 +304,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::F32 => {
                     let wd = writevalues
@@ -319,7 +324,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         }
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::F32abcd => {
                     let wd = writevalues
@@ -334,7 +339,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[2], data[3]]));
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::F32cdab => {
                     let wd = writevalues
@@ -349,7 +354,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[0], data[1]]));
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::F32badc => {
                     let wd = writevalues
@@ -364,7 +369,7 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[3], data[2]]));
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::F32dcba => {
                     let wd = writevalues
@@ -379,12 +384,11 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[1], data[0]]));
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd);
+                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
                 }
                 Formats::String => {
                     todo!()
                 }
-                Formats::Unknown => unreachable!(),
             }
             if rs.is_ok() {
                 RECEIVE_COUNT.fetch_add(1, Ordering::Relaxed);
@@ -396,40 +400,120 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
             // read
             for slave in slave {
                 ctx.set_slave(Slave(slave));
-                TRANSMIT_COUNT.fetch_add(1, Ordering::Relaxed);
                 print!("-- Polling slave {}...", slave);
                 if !args.once {
                     println!(" Ctrl-C to stop");
                 } else {
                     println!();
                 }
-                for &r in reference.iter() {
+                for &addr in reference.iter() {
+                    TRANSMIT_COUNT.fetch_add(1, Ordering::Relaxed);
                     match function {
                         Functions::Coil => {
-                            let rs = ctx.read_coils(r, nregs).map(|v| {
-                                v.iter()
-                                    .map(|v| if !(*v) { 0 } else { 1 })
-                                    .collect::<Vec<u16>>()
-                            });
-                            print_read_value(r, count, &format, &function, args.little_endian, rs);
+                            match ctx.read_coils(addr, nregs).await {
+                                Ok(r) => match r {
+                                    Ok(v) => {
+                                        let data = v
+                                            .iter()
+                                            .map(|c| if !(*c) { 0 } else { 1 })
+                                            .collect::<Vec<u16>>();
+                                        print_read_value(
+                                            addr,
+                                            count,
+                                            &format,
+                                            &function,
+                                            args.little_endian,
+                                            data,
+                                        );
+                                    }
+                                    Err(e) => {
+                                        ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                        println!("Read {:?} failed: {:?}", function, e);
+                                    }
+                                },
+                                Err(e) => {
+                                    ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                    println!("Read {:?} failed: {:?}", function, e);
+                                }
+                            };
                         }
                         Functions::DiscreteInput => {
-                            let rs = ctx.read_discrete_inputs(r, nregs).map(|v| {
-                                v.iter()
-                                    .map(|v| if !(*v) { 0 } else { 1 })
-                                    .collect::<Vec<u16>>()
-                            });
-                            print_read_value(r, count, &format, &function, args.little_endian, rs);
+                            match ctx.read_discrete_inputs(addr, nregs).await {
+                                Ok(r) => match r {
+                                    Ok(v) => {
+                                        let data = v
+                                            .iter()
+                                            .map(|c| if !(*c) { 0 } else { 1 })
+                                            .collect::<Vec<u16>>();
+                                        print_read_value(
+                                            addr,
+                                            count,
+                                            &format,
+                                            &function,
+                                            args.little_endian,
+                                            data,
+                                        );
+                                    }
+                                    Err(e) => {
+                                        ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                        println!("Read {:?} failed: {:?}", function, e);
+                                    }
+                                },
+                                Err(e) => {
+                                    ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                    println!("Read {:?} failed: {:?}", function, e);
+                                }
+                            };
                         }
                         Functions::HoldingRegister => {
-                            let rs = ctx.read_holding_registers(r, nregs);
-                            print_read_value(r, count, &format, &function, args.little_endian, rs);
+                            match ctx.read_holding_registers(addr, nregs).await {
+                                Ok(r) => match r {
+                                    Ok(data) => {
+                                        print_read_value(
+                                            addr,
+                                            count,
+                                            &format,
+                                            &function,
+                                            args.little_endian,
+                                            data,
+                                        );
+                                    }
+                                    Err(e) => {
+                                        ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                        println!("Read {:?} failed: {:?}", function, e);
+                                    }
+                                },
+                                Err(e) => {
+                                    ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                    println!("Read {:?} failed: {:?}", function, e);
+                                }
+                            };
                         }
                         Functions::InputRegister => {
-                            let rs = ctx.read_input_registers(r, nregs);
-                            print_read_value(r, count, &format, &function, args.little_endian, rs);
+                            match ctx.read_input_registers(addr, nregs).await {
+                                Ok(r) => match r {
+                                    Ok(data) => {
+                                        print_read_value(
+                                            addr,
+                                            count,
+                                            &format,
+                                            &function,
+                                            args.little_endian,
+                                            data,
+                                        );
+                                    }
+                                    Err(e) => {
+                                        ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                        println!("Read {:?} failed: {:?}", function, e);
+                                    }
+                                },
+                                Err(e) => {
+                                    ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                    println!("Read {:?} failed: {:?}", function, e);
+                                }
+                            };
                         }
-                        Functions::Unknown => {
+                        _ => {
                             todo!()
                         }
                     }
@@ -448,16 +532,16 @@ fn run<T: SyncWriter + SyncReader>(mut ctx: T, args: Args) -> Result<()> {
     Ok(())
 }
 
-fn tcp_client(args: Args) -> Result<()> {
+async fn tcp_client(args: Args) -> Result<()> {
     let socket_addr = SocketAddr::new(
         IpAddr::V4(args.device.parse::<Ipv4Addr>().unwrap()),
         args.port.unwrap(),
     );
 
     loop {
-        match sync::tcp::connect_with_timeout(socket_addr, args.timeout) {
+        match tcp::connect(socket_addr).await {
             Ok(ctx) => {
-                run(ctx, args)?;
+                run(ctx, args).await?;
                 break;
             }
             Err(e) => {
@@ -471,7 +555,7 @@ fn tcp_client(args: Args) -> Result<()> {
     Ok(())
 }
 
-fn rtu_client(args: Args) -> Result<()> {
+async fn rtu_client(args: Args) -> Result<()> {
     let path = args.device.clone();
     let slave = Slave(args.slave[0]);
     let builder = tokio_serial::new(path, args.baudrate.unwrap())
@@ -495,9 +579,10 @@ fn rtu_client(args: Args) -> Result<()> {
         .timeout(args.timeout.unwrap());
 
     loop {
-        match sync::rtu::connect_slave_with_timeout(&builder, slave, args.timeout) {
-            Ok(ctx) => {
-                run(ctx, args)?;
+        match SerialStream::open(&builder) {
+            Ok(port) => {
+                let ctx = rtu::attach_slave(port, slave);
+                run(ctx, args).await?;
                 break;
             }
             Err(e) => {
@@ -512,23 +597,241 @@ fn rtu_client(args: Args) -> Result<()> {
     Ok(())
 }
 
-fn rtu_in_tcp_client(args: Args) -> Result<()> {
+async fn rtu_in_tcp_client(args: Args) -> Result<()> {
     let socket_addr = SocketAddr::new(
         IpAddr::V4(args.device.parse::<Ipv4Addr>().unwrap()),
         args.port.unwrap(),
     );
 
-    let timeout = args.timeout;
     let slave = Slave(args.slave[0]);
 
-    let sync_ctx = rtuintcp::connect_slave_with_timeout(socket_addr, slave, timeout)?;
-    run(sync_ctx, args)?;
+    let ctx = rtu_over_tcp::connect_slave(socket_addr, slave).await?;
+    run(ctx, args).await?;
     Ok(())
 }
 
-#[allow(dead_code)]
-fn iec104_client(_args: Args) -> Result<()> {
-    todo!()
+async fn iec104_client(args: Args) -> Result<()> {
+    let writevalues = args.writevalues.clone();
+    let function = args.r#type.clone().unwrap().function;
+    let remote_addr = args.slave.clone()[0];
+    let reference = args.reference.clone();
+    let count = args.count.unwrap();
+
+    let socket_addr = SocketAddr::new(
+        IpAddr::V4(args.device.parse::<Ipv4Addr>().unwrap()),
+        args.port.unwrap(),
+    );
+    let mut client = IEC104Client::new(socket_addr, remote_addr as u16);
+    client.start().await?;
+    loop {
+        // write
+        if writevalues.is_some() {
+            std::thread::sleep(Duration::from_millis(args.poll_rate.unwrap()));
+            // TODO:
+            let mut addr = reference[0];
+            let writevalues = writevalues.clone().unwrap();
+            match function {
+                Functions::Siq => {
+                    let wd = writevalues
+                        .iter()
+                        .map(|v| v.parse::<bool>().unwrap())
+                        .collect::<Vec<bool>>();
+                    for w in wd {
+                        if let Err(e) = client.write_siq(addr, w).await {
+                            println!("write siq err{e}");
+                            continue;
+                        }
+                        addr += 1;
+                    }
+                }
+                Functions::Diq => {
+                    let wd = writevalues
+                        .iter()
+                        .map(|v| v.parse::<u8>().unwrap())
+                        .collect::<Vec<u8>>();
+                    for w in wd {
+                        if client.write_diq(addr, w).await.is_err() {
+                            continue;
+                        }
+                        addr += 1;
+                    }
+                }
+                Functions::Nva => {
+                    let wd = writevalues
+                        .iter()
+                        .map(|v| v.parse::<i16>().unwrap())
+                        .collect::<Vec<i16>>();
+                    for w in wd {
+                        if client.write_nva(addr, w).await.is_err() {
+                            continue;
+                        }
+                        addr += 1;
+                    }
+                }
+                Functions::Sva => {
+                    let wd = writevalues
+                        .iter()
+                        .map(|v| v.parse::<i16>().unwrap())
+                        .collect::<Vec<i16>>();
+                    for w in wd {
+                        if client.write_sva(addr, w).await.is_err() {
+                            continue;
+                        }
+                        addr += 1;
+                    }
+                }
+                Functions::R => {
+                    let wd = writevalues
+                        .iter()
+                        .map(|v| v.parse::<f32>().unwrap())
+                        .collect::<Vec<f32>>();
+                    for w in wd {
+                        if client.write_r(addr, w).await.is_err() {
+                            continue;
+                        }
+                        addr += 1;
+                    }
+                }
+                Functions::Bcr => {
+                    let wd = writevalues
+                        .iter()
+                        .map(|v| v.parse::<i32>().unwrap())
+                        .collect::<Vec<i32>>();
+                    for w in wd {
+                        if client.write_bcr(addr, w).await.is_err() {
+                            continue;
+                        }
+                        addr += 1;
+                    }
+                }
+                _ => {}
+            }
+            println!("Write {} references.", writevalues.len());
+            std::thread::sleep(Duration::from_millis(args.poll_rate.unwrap()));
+        } else {
+            // read
+            print!("-- Polling remote addr {}...", remote_addr);
+            if !args.once {
+                println!(" Ctrl-C to stop");
+            } else {
+                println!();
+            }
+            match function {
+                Functions::Siq => {
+                    for &addr in reference.iter() {
+                        let mut ad = addr;
+                        for _ in 0..count {
+                            print!("[{}({:#04X})]: \t", ad, ad);
+                            if let Some(r) = client.read_siq(ad) {
+                                println!("{}", r);
+                            } else {
+                                println!("waiting for data...");
+                            }
+                            ad += 1;
+                        }
+                        if reference.len() > 1 {
+                            println!("================");
+                        }
+                    }
+                }
+                Functions::Diq => {
+                    for &addr in reference.iter() {
+                        let mut ad = addr;
+                        for _ in 0..count {
+                            print!("[{}({:#04X})]: \t", ad, ad);
+                            if let Some(r) = client.read_diq(ad) {
+                                println!("{}", r);
+                            } else {
+                                println!("waiting for data...");
+                            }
+                            ad += 1;
+                        }
+                        if reference.len() > 1 {
+                            println!("================");
+                        }
+                    }
+                }
+                Functions::Nva => {
+                    for &addr in reference.iter() {
+                        let mut ad = addr;
+                        for _ in 0..count {
+                            print!("[{}({:#04X})]: \t", ad, ad);
+                            if let Some(r) = client.read_nva(ad) {
+                                println!("{}", r);
+                            } else {
+                                println!("waiting for data...");
+                            }
+                            ad += 1;
+                        }
+                        if reference.len() > 1 {
+                            println!("================");
+                        }
+                    }
+                }
+                Functions::Sva => {
+                    for &addr in reference.iter() {
+                        let mut ad = addr;
+                        for _ in 0..count {
+                            print!("[{}({:#04X})]: \t", ad, ad);
+                            if let Some(r) = client.read_sva(ad) {
+                                println!("{}", r);
+                            } else {
+                                println!("waiting for data...");
+                            }
+                            ad += 1;
+                        }
+                        if reference.len() > 1 {
+                            println!("================");
+                        }
+                    }
+                }
+                Functions::R => {
+                    for &addr in reference.iter() {
+                        let mut ad = addr;
+                        for _ in 0..count {
+                            print!("[{}({:#04X})]: \t", ad, ad);
+                            if let Some(r) = client.read_r(ad) {
+                                println!("{}", r);
+                            } else {
+                                println!("waiting for data...");
+                            }
+                            ad += 1;
+                        }
+                        if reference.len() > 1 {
+                            println!("================");
+                        }
+                    }
+                }
+                Functions::Bcr => {
+                    for &addr in reference.iter() {
+                        let mut ad = addr;
+                        for _ in 0..count {
+                            print!("[{}({:#04X})]: \t", ad, ad);
+                            if let Some(r) = client.read_bcr(ad) {
+                                println!("{}", r);
+                            } else {
+                                println!("waiting for data...");
+                            }
+                            ad += 1;
+                        }
+                        if reference.len() > 1 {
+                            println!("================");
+                        }
+                    }
+                }
+                _ => unreachable!(),
+            }
+
+            if !args.once {
+                std::thread::sleep(Duration::from_millis(args.poll_rate.unwrap()));
+            }
+        }
+        if args.once {
+            break;
+        }
+    }
+
+    Ok(())
 }
 
 fn print_read_value(
@@ -537,190 +840,178 @@ fn print_read_value(
     format: &Formats,
     function: &Functions,
     little_endian: bool,
-    rs: Result<Vec<u16>, std::io::Error>,
+    data: Vec<u16>,
 ) {
-    if rs.is_ok() {
-        RECEIVE_COUNT.fetch_add(1, Ordering::Relaxed);
-        let data = rs.unwrap();
-        for c in 0..count as usize {
-            // print!("{}", format!("[{}({:#04X})]: \t", addr, addr).green());
-            print!("[{}({:#04X})]: \t", addr, addr);
-            match format {
-                Formats::U16 => {
-                    if (data[c] & 0x8000) != 0 {
-                        println!("{} ({})", data[c], data[c] as i16);
-                    } else {
-                        println!("{}", data[c]);
-                    }
-                    addr += 1;
+    RECEIVE_COUNT.fetch_add(1, Ordering::Relaxed);
+    for c in 0..count as usize {
+        // print!("{}", format!("[{}({:#04X})]: \t", addr, addr).green());
+        print!("[{}({:#04X})]: \t", addr, addr);
+        match format {
+            Formats::U16 => {
+                if (data[c] & 0x8000) != 0 {
+                    println!("{} ({})", data[c], data[c] as i16);
+                } else {
+                    println!("{}", data[c]);
                 }
-                Formats::I16 => {
-                    println!("{}", data[c] as i16);
-                    addr += 1;
+                addr += 1;
+            }
+            Formats::I16 => {
+                println!("{}", data[c] as i16);
+                addr += 1;
+            }
+            Formats::I32 => {
+                let v = extract_data(&data, 2 * c, little_endian);
+                println!("{}", v as i32);
+                addr += 2;
+            }
+            Formats::I32abcd => {
+                let v = extract_data(&data, 2 * c, false);
+                println!("{}", v as i32);
+                addr += 2;
+            }
+            Formats::I32cdab => {
+                let v = extract_data(&data, 2 * c, true);
+                println!("{}", v as i32);
+                addr += 2;
+            }
+            Formats::I32badc => {
+                let v = extract_data_32(&data, 2 * c, 1, 0, 3, 2);
+                println!("{}", v as i32);
+                addr += 2;
+            }
+            Formats::I32dcba => {
+                let v = extract_data_32(&data, 2 * c, 3, 2, 1, 0);
+                println!("{}", v as i32);
+                addr += 2;
+            }
+            Formats::U32 => {
+                let v = extract_data(&data, 2 * c, little_endian);
+                if v & 0x80000000 != 0 {
+                    println!("{} ({})", v, v as i32);
+                } else {
+                    println!("{}", v);
                 }
-                Formats::I32 => {
-                    let v = extract_data(&data, 2 * c, little_endian);
-                    println!("{}", v as i32);
-                    addr += 2;
+                addr += 2;
+            }
+            Formats::U32abcd => {
+                let v = extract_data(&data, 2 * c, false);
+                if v & 0x80000000 != 0 {
+                    println!("{} ({})", v, v as i32);
+                } else {
+                    println!("{}", v);
                 }
-                Formats::I32abcd => {
-                    let v = extract_data(&data, 2 * c, false);
-                    println!("{}", v as i32);
-                    addr += 2;
+                addr += 2;
+            }
+            Formats::U32cdab => {
+                let v = extract_data(&data, 2 * c, true);
+                if v & 0x80000000 != 0 {
+                    println!("{} ({})", v, v as i32);
+                } else {
+                    println!("{}", v);
                 }
-                Formats::I32cdab => {
-                    let v = extract_data(&data, 2 * c, true);
-                    println!("{}", v as i32);
-                    addr += 2;
+                addr += 2;
+            }
+            Formats::U32badc => {
+                let v = extract_data_32(&data, 2 * c, 1, 0, 3, 2);
+                if v & 0x80000000 != 0 {
+                    println!("{} ({})", v, v as i32);
+                } else {
+                    println!("{}", v);
                 }
-                Formats::I32badc => {
-                    let v = extract_data_32(&data, 2 * c, 1, 0, 3, 2);
-                    println!("{}", v as i32);
-                    addr += 2;
+                addr += 2;
+            }
+            Formats::U32dcba => {
+                let v = extract_data_32(&data, 2 * c, 3, 2, 1, 0);
+                if v & 0x80000000 != 0 {
+                    println!("{} ({})", v, v as i32);
+                } else {
+                    println!("{}", v);
                 }
-                Formats::I32dcba => {
-                    let v = extract_data_32(&data, 2 * c, 3, 2, 1, 0);
-                    println!("{}", v as i32);
-                    addr += 2;
-                }
-                Formats::U32 => {
-                    let v = extract_data(&data, 2 * c, little_endian);
-                    if v & 0x80000000 != 0 {
-                        println!("{} ({})", v, v as i32);
-                    } else {
-                        println!("{}", v);
-                    }
-                    addr += 2;
-                }
-                Formats::U32abcd => {
-                    let v = extract_data(&data, 2 * c, false);
-                    if v & 0x80000000 != 0 {
-                        println!("{} ({})", v, v as i32);
-                    } else {
-                        println!("{}", v);
-                    }
-                    addr += 2;
-                }
-                Formats::U32cdab => {
-                    let v = extract_data(&data, 2 * c, true);
-                    if v & 0x80000000 != 0 {
-                        println!("{} ({})", v, v as i32);
-                    } else {
-                        println!("{}", v);
-                    }
-                    addr += 2;
-                }
-                Formats::U32badc => {
-                    let v = extract_data_32(&data, 2 * c, 1, 0, 3, 2);
-                    if v & 0x80000000 != 0 {
-                        println!("{} ({})", v, v as i32);
-                    } else {
-                        println!("{}", v);
-                    }
-                    addr += 2;
-                }
-                Formats::U32dcba => {
-                    let v = extract_data_32(&data, 2 * c, 3, 2, 1, 0);
-                    if v & 0x80000000 != 0 {
-                        println!("{} ({})", v, v as i32);
-                    } else {
-                        println!("{}", v);
-                    }
-                    addr += 2;
-                }
-                Formats::F32 => {
-                    let v = extract_data(&data, 2 * c, little_endian);
-                    println!("{}", f32::from_bits(v));
-                    addr += 2;
-                }
-                Formats::F32abcd => {
-                    let v = extract_data(&data, 2 * c, false);
-                    println!("{}", f32::from_bits(v));
-                    addr += 2;
-                }
-                Formats::F32cdab => {
-                    let v = extract_data(&data, 2 * c, true);
-                    println!("{}", f32::from_bits(v));
-                    addr += 2;
-                }
-                Formats::F32badc => {
-                    let v = extract_data_32(&data, 2 * c, 1, 0, 3, 2);
-                    println!("{}", f32::from_bits(v));
-                    addr += 2;
-                }
-                Formats::F32dcba => {
-                    let v = extract_data_32(&data, 2 * c, 3, 2, 1, 0);
-                    println!("{}", f32::from_bits(v));
-                    addr += 2;
-                }
-                Formats::Hex16 => {
-                    println!("{:#04X}", data[c]);
-                    addr += 1;
-                }
-                Formats::Hex32 => {
-                    let v = extract_data(&data, 2 * c, little_endian);
-                    println!("{:#010X}", v);
-                    addr += 2;
-                }
-                Formats::Bin16
-                    if *function == Functions::Coil || *function == Functions::DiscreteInput =>
-                {
-                    println!("{:b}", data[c]);
-                    addr += 1;
-                }
-                Formats::Bin16 => {
-                    println!("{:016b}", data[c]);
-                    addr += 1;
-                }
-                Formats::Bin32 => {
-                    let v = extract_data(&data, 2 * c, little_endian);
-                    println!("{:032b}", v);
-                    addr += 2;
-                }
+                addr += 2;
+            }
+            Formats::F32 => {
+                let v = extract_data(&data, 2 * c, little_endian);
+                println!("{}", f32::from_bits(v));
+                addr += 2;
+            }
+            Formats::F32abcd => {
+                let v = extract_data(&data, 2 * c, false);
+                println!("{}", f32::from_bits(v));
+                addr += 2;
+            }
+            Formats::F32cdab => {
+                let v = extract_data(&data, 2 * c, true);
+                println!("{}", f32::from_bits(v));
+                addr += 2;
+            }
+            Formats::F32badc => {
+                let v = extract_data_32(&data, 2 * c, 1, 0, 3, 2);
+                println!("{}", f32::from_bits(v));
+                addr += 2;
+            }
+            Formats::F32dcba => {
+                let v = extract_data_32(&data, 2 * c, 3, 2, 1, 0);
+                println!("{}", f32::from_bits(v));
+                addr += 2;
+            }
+            Formats::Hex16 => {
+                println!("{:#04X}", data[c]);
+                addr += 1;
+            }
+            Formats::Hex32 => {
+                let v = extract_data(&data, 2 * c, little_endian);
+                println!("{:#010X}", v);
+                addr += 2;
+            }
+            Formats::Bin16
+                if *function == Functions::Coil || *function == Functions::DiscreteInput =>
+            {
+                println!("{:b}", data[c]);
+                addr += 1;
+            }
+            Formats::Bin16 => {
+                println!("{:016b}", data[c]);
+                addr += 1;
+            }
+            Formats::Bin32 => {
+                let v = extract_data(&data, 2 * c, little_endian);
+                println!("{:032b}", v);
+                addr += 2;
+            }
 
-                Formats::String => {
-                    // addr += 1;
-                    todo!()
-                }
-                Formats::Unknown => unreachable!(),
+            Formats::String => {
+                // addr += 1;
+                todo!()
             }
         }
-    } else {
-        ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
-        println!("Read {:?} failed: {:?}", function, rs.err().unwrap());
     }
 }
 
 fn check_args(args: &mut Args) -> Result<()> {
-    if args.writevalues.is_some() {
+    let writevalues = args.writevalues.clone();
+    let tp = args.r#type.clone().unwrap();
+    let func = tp.function;
+    let format = tp.format;
+    if writevalues.is_some() {
+        let writevalues = writevalues.unwrap();
         if args.slave.len() > 1 {
             Err(anyhow::anyhow!("Only one slave can write"))?;
         }
 
-        match args.r#type.clone().unwrap().function {
+        match func {
             Functions::DiscreteInput | Functions::InputRegister => {
                 Err(anyhow::anyhow!("Unable to write read-only element"))?;
             }
             Functions::Coil => {
-                for v in args.writevalues.clone().unwrap() {
+                for v in writevalues {
                     if v.parse::<bool>().is_err() {
                         Err(anyhow::anyhow!("Write value {} must be bool", v))?;
                     }
                 }
             }
-            Functions::HoldingRegister => match args.r#type.clone().unwrap().format {
-                Formats::Bin16
-                    if args.r#type.as_ref().unwrap().function == Functions::Coil
-                        || args.r#type.as_ref().unwrap().function == Functions::DiscreteInput =>
-                {
-                    for v in args.writevalues.clone().unwrap() {
-                        if v.parse::<bool>().is_err() {
-                            Err(anyhow::anyhow!("Write value {} must be bool", v))?;
-                        }
-                    }
-                }
+            Functions::HoldingRegister => match format {
                 Formats::U16 | Formats::Hex16 | Formats::Bin16 => {
-                    for v in args.writevalues.clone().unwrap() {
+                    for v in writevalues {
                         if v.parse::<u16>().is_err()
                             && (v.starts_with("0x")
                                 && u16::from_str_radix(v.trim_start_matches("0x"), 16).is_err())
@@ -732,7 +1023,7 @@ fn check_args(args: &mut Args) -> Result<()> {
                     }
                 }
                 Formats::I16 => {
-                    for v in args.writevalues.clone().unwrap() {
+                    for v in writevalues {
                         if v.parse::<i16>().is_err() {
                             Err(anyhow::anyhow!("Write value {} must be int16", v))?;
                         }
@@ -781,12 +1072,49 @@ fn check_args(args: &mut Args) -> Result<()> {
                 Formats::String => {
                     Err(anyhow::anyhow!("You can use string format only for output"))?
                 }
-                Formats::Unknown => {
-                    Err(anyhow::anyhow!("Unsupported format"))?;
-                }
             },
-            Functions::Unknown => {
-                Err(anyhow::anyhow!("Unsupported function"))?;
+            Functions::Siq => {
+                for v in writevalues {
+                    if v.parse::<bool>().is_err() {
+                        Err(anyhow::anyhow!("Write value {} must be bool", v))?;
+                    }
+                }
+            }
+            Functions::Diq => {
+                for v in writevalues {
+                    if v.parse::<u8>().is_err() {
+                        Err(anyhow::anyhow!("Write value {} must be 0/1/2/3", v))?;
+                    }
+                    if v.parse::<u8>().unwrap() > 3 {
+                        Err(anyhow::anyhow!("Write value {} must be 0/1/2/3", v))?;
+                    }
+                }
+            }
+            Functions::Nva | Functions::Sva => {
+                for v in writevalues {
+                    if v.parse::<i16>().is_err() {
+                        Err(anyhow::anyhow!("Write value {} must be int16", v))?;
+                    }
+                }
+            }
+            Functions::R => {
+                for v in args.writevalues.clone().unwrap() {
+                    if v.parse::<f32>().is_err() {
+                        Err(anyhow::anyhow!("Write value {} must be float", v))?;
+                    }
+                }
+            }
+            Functions::Bcr => {
+                for v in args.writevalues.clone().unwrap() {
+                    if v.parse::<u32>().is_err()
+                        && (v.starts_with("0x")
+                            && u32::from_str_radix(v.trim_start_matches("0x"), 16).is_err())
+                        && (v.starts_with("0b")
+                            && u32::from_str_radix(v.trim_start_matches("0b"), 2).is_err())
+                    {
+                        Err(anyhow::anyhow!("Write value {} must be u32/hex32/bin32", v))?;
+                    }
+                }
             }
         }
 
@@ -887,10 +1215,22 @@ fn check_args(args: &mut Args) -> Result<()> {
                 } else {
                     Err(anyhow::anyhow!("Unsupported mode:{}", device.remote.mode))?;
                 }
-            } else {
-                if device.remote.protocol.to_lowercase() == "iec104" {
-                    Err(anyhow::anyhow!("iec104 protocol isn't supported yet"))?;
+            } else if device.remote.protocol.to_lowercase() == "iec104" {
+                args.mode = Some(Mode::IEC104);
+                args.device = device.remote.host.clone().unwrap();
+                if device.remote.slave_id.is_some() {
+                    args.slave.clear();
+                    args.slave.push(device.remote.slave_id.unwrap());
                 }
+                if device.remote.port.is_some() {
+                    args.port = Some(device.remote.port.clone().unwrap().parse::<u16>().unwrap());
+                }
+                if device.remote.timeout_ms.is_some() {
+                    args.timeout = Some(Duration::from_secs_f32(
+                        device.remote.timeout_ms.unwrap() as f32 / 1000.0,
+                    ));
+                }
+            } else {
                 Err(anyhow::anyhow!(
                     "Unsupported protocol:{}",
                     device.remote.protocol
@@ -903,35 +1243,37 @@ fn check_args(args: &mut Args) -> Result<()> {
 }
 
 fn print_args(args: &Args) {
-    println!("Protocol configuration: ModBus {:?}", args.mode.unwrap());
-    println!("Slave configuration...: address = {:?}", args.slave);
+    println!("Protocol configuration: {:?}", args.mode.unwrap());
+    println!("Slave/Remote configuration...: address = {:?}", args.slave);
     println!(
         "                      : start reference = {:?}, count = {}",
         args.reference,
         args.count.unwrap()
     );
-    if args.mode == Some(Mode::Rtu) {
-        println!(
-            "Communication.........: {}, {:?}-{:1?}-{}-{:?}
-                        t/o {:.2} s, poll rate {} ms",
-            args.device.to_string().red(),
-            args.baudrate.unwrap(),
-            args.databits.unwrap(),
-            args.parity.clone().unwrap(),
-            args.stopbits.unwrap(),
-            args.timeout.unwrap().as_secs_f32(),
-            args.poll_rate.unwrap()
-        );
-    } else if args.mode == Some(Mode::Tcp) || args.mode == Some(Mode::RtuInTcp) {
-        println!(
-            "Communication.........: {}, port {}, t/o {:.2} s, poll rate {} ms",
-            args.device.to_string().red(),
-            args.port.unwrap().to_string().red(),
-            args.timeout.unwrap().as_secs_f32(),
-            args.poll_rate.unwrap()
-        );
-    } else {
-        todo!()
+    match args.mode {
+        Some(Mode::Rtu) => {
+            println!(
+                "Communication.........: {}, {:?}-{:1?}-{}-{:?}
+                                t/o {:.2} s, poll rate {} ms",
+                args.device.to_string().red(),
+                args.baudrate.unwrap(),
+                args.databits.unwrap(),
+                args.parity.clone().unwrap(),
+                args.stopbits.unwrap(),
+                args.timeout.unwrap().as_secs_f32(),
+                args.poll_rate.unwrap()
+            );
+        }
+        Some(Mode::Tcp) | Some(Mode::RtuInTcp) | Some(Mode::IEC104) => {
+            println!(
+                "Communication.........: {}, port {}, t/o {:.2} s, poll rate {} ms",
+                args.device.to_string().red(),
+                args.port.unwrap().to_string().red(),
+                args.timeout.unwrap().as_secs_f32(),
+                args.poll_rate.unwrap()
+            );
+        }
+        None => unreachable!(),
     }
     println!(
         "Data type.............: {:?} {:?}\n",

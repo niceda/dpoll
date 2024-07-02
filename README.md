@@ -1,6 +1,6 @@
 # [dpoll](https://git-inf.skiffenergy.com/xiongdajun/dpoll)
 
-Modbus Master Simulator. It allows to read and write in Modbus slave registers.
+Modbus/IEC104 Master Simulator. It allows to read and write in Modbus slave registers and IEC104.
 
 Thanks to [mbpoll](https://github.com/epsilonrt/mbpoll)
 
@@ -86,6 +86,3 @@ dpoll em2_0 -t 4:hex32 -r 0 -c 10 -vvvv
 - [ ] 支持 IEC104
 - [ ] 支持 DLT645
 - [ ] 支持 `i64/u64/hex64/bin64/f64`
-- [ ] `-u`
-- [ ] `-R`
-- [ ] `-F`
