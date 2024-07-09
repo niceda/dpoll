@@ -6,6 +6,7 @@ use std::{
 };
 
 use anyhow::Result;
+use log::error;
 use tokio::{sync::oneshot, time::sleep};
 use tokio_iecp5::{
     asdu::{Asdu, Cause, CauseOfTransmission, CommonAddr, TypeID},
@@ -312,47 +313,86 @@ impl ClientHandler for IEC104ClientHandler {
         match asdu.identifier.type_id {
             TypeID::C_IC_NA_1 => future::ready(Ok(vec![])),
             TypeID::M_SP_NA_1 | TypeID::M_SP_TA_1 | TypeID::M_SP_TB_1 => {
-                let sgs = asdu.get_single_point().unwrap();
-                for mut sg in sgs {
-                    self.siq_space.lock().unwrap()[sg.ioa.addr().get() as usize] =
-                        Some(sg.siq.spi().get());
+                match asdu.get_single_point() {
+                    Ok(sgs) => {
+                        for mut sg in sgs {
+                            self.siq_space.lock().unwrap()[sg.ioa.addr().get() as usize] =
+                                Some(sg.siq.spi().get());
+                        }
+                    }
+                    Err(e) => {
+                        error!("Error while processing single point message: {}", e);
+                    }
                 }
                 future::ready(Ok(vec![]))
             }
             TypeID::M_DP_NA_1 | TypeID::M_DP_TA_1 | TypeID::M_DP_TB_1 => {
-                let dbs = asdu.get_double_point().unwrap();
-                for mut db in dbs {
-                    self.diq_space.lock().unwrap()[db.ioa.addr().get() as usize] =
-                        Some(db.diq.spi().get().value());
+                match asdu.get_double_point() {
+                    Ok(dbs) => {
+                        for mut db in dbs {
+                            self.diq_space.lock().unwrap()[db.ioa.addr().get() as usize] =
+                                Some(db.diq.spi().get().value());
+                        }
+                    }
+                    Err(e) => {
+                        error!("Error while processing double point message: {}", e);
+                    }
                 }
                 future::ready(Ok(vec![]))
             }
 
             TypeID::M_ME_NA_1 | TypeID::M_ME_TA_1 | TypeID::M_ME_TD_1 | TypeID::M_ME_ND_1 => {
-                let nvas = asdu.get_measured_value_normal().unwrap();
-                for mut v in nvas {
-                    self.nva_space.lock().unwrap()[v.ioa.addr().get() as usize] = Some(v.nva);
+                match asdu.get_measured_value_normal() {
+                    Ok(nvas) => {
+                        for mut v in nvas {
+                            self.nva_space.lock().unwrap()[v.ioa.addr().get() as usize] =
+                                Some(v.nva);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Error while processing normal value message: {}", e);
+                    }
                 }
                 future::ready(Ok(vec![]))
             }
             TypeID::M_ME_NB_1 | TypeID::M_ME_TB_1 | TypeID::M_ME_TE_1 => {
-                let svas = asdu.get_measured_value_scaled().unwrap();
-                for mut v in svas {
-                    self.sva_space.lock().unwrap()[v.ioa.addr().get() as usize] = Some(v.sva);
+                match asdu.get_measured_value_scaled() {
+                    Ok(svas) => {
+                        for mut v in svas {
+                            self.sva_space.lock().unwrap()[v.ioa.addr().get() as usize] =
+                                Some(v.sva);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Error while processing scaled value message: {}", e);
+                    }
                 }
                 future::ready(Ok(vec![]))
             }
             TypeID::M_ME_NC_1 | TypeID::M_ME_TC_1 | TypeID::M_ME_TF_1 => {
-                let rs = asdu.get_measured_value_float().unwrap();
-                for mut v in rs {
-                    self.r_space.lock().unwrap()[v.ioa.addr().get() as usize] = Some(v.r);
+                match asdu.get_measured_value_float() {
+                    Ok(rs) => {
+                        for mut v in rs {
+                            self.r_space.lock().unwrap()[v.ioa.addr().get() as usize] = Some(v.r);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Error while processing float value message: {}", e);
+                    }
                 }
                 future::ready(Ok(vec![]))
             }
             TypeID::M_IT_NA_1 | TypeID::M_IT_TA_1 | TypeID::M_IT_TB_1 => {
-                let bcrs = asdu.get_integrated_totals().unwrap();
-                for mut v in bcrs {
-                    self.bcr_space.lock().unwrap()[v.ioa.addr().get() as usize] = Some(v.bcr.value);
+                match asdu.get_integrated_totals() {
+                    Ok(bcrs) => {
+                        for mut v in bcrs {
+                            self.bcr_space.lock().unwrap()[v.ioa.addr().get() as usize] =
+                                Some(v.bcr.value);
+                        }
+                    }
+                    Err(e) => {
+                        error!("Error while processing integrated totals message: {}", e);
+                    }
                 }
                 future::ready(Ok(vec![]))
             }
