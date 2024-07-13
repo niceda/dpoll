@@ -15,6 +15,7 @@ use std::{
     },
     time::Duration,
 };
+use tokio::time::{timeout_at, Instant};
 use tokio_modbus::{client::rtu_over_tcp, prelude::*};
 use tokio_serial::SerialStream;
 
@@ -84,6 +85,7 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
         let slave = args.slave.clone();
         let reference = args.reference.clone();
         let count = args.count.unwrap();
+        let duration = args.timeout.unwrap();
         let mut nregs = count;
 
         if format == Formats::I32
@@ -121,9 +123,17 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                         .map(|v| v.parse::<bool>().unwrap())
                         .collect::<Vec<bool>>();
                     if wd.len() == 1 {
-                        rs = ctx.write_single_coil(reference[0], wd[0]).await;
+                        rs = timeout_at(
+                            Instant::now() + duration,
+                            ctx.write_single_coil(reference[0], wd[0]),
+                        )
+                        .await;
                     } else {
-                        rs = ctx.write_multiple_coils(reference[0], &wd).await;
+                        rs = timeout_at(
+                            Instant::now() + duration,
+                            ctx.write_multiple_coils(reference[0], &wd),
+                        )
+                        .await;
                     }
                 }
                 Formats::U16 | Formats::Bin16 | Formats::Hex16 => {
@@ -142,9 +152,17 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                         })
                         .collect::<Vec<u16>>();
                     if wd.len() == 1 {
-                        rs = ctx.write_single_register(reference[0], wd[0]).await;
+                        rs = timeout_at(
+                            Instant::now() + duration,
+                            ctx.write_single_register(reference[0], wd[0]),
+                        )
+                        .await;
                     } else {
-                        rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                        rs = timeout_at(
+                            Instant::now() + duration,
+                            ctx.write_multiple_registers(reference[0], &wd),
+                        )
+                        .await;
                     }
                 }
                 Formats::I16 => {
@@ -153,14 +171,20 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                         .map(|v| v.parse::<i16>().unwrap())
                         .collect::<Vec<i16>>();
                     if wd.len() == 1 {
-                        rs = ctx.write_single_register(reference[0], wd[0] as u16).await;
+                        rs = timeout_at(
+                            Instant::now() + duration,
+                            ctx.write_single_register(reference[0], wd[0] as u16),
+                        )
+                        .await;
                     } else {
-                        rs = ctx
-                            .write_multiple_registers(
+                        rs = timeout_at(
+                            Instant::now() + duration,
+                            ctx.write_multiple_registers(
                                 reference[0],
                                 &wd.iter().map(|v| *v as u16).collect::<Vec<u16>>(),
-                            )
-                            .await;
+                            ),
+                        )
+                        .await;
                     }
                 }
                 Formats::I32 => {
@@ -178,7 +202,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::I32abcd => {
                     let wd = writevalues.iter().map(|v| v.parse::<i32>().unwrap()).fold(
@@ -190,7 +218,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::I32cdab => {
                     let wd = writevalues.iter().map(|v| v.parse::<i32>().unwrap()).fold(
@@ -202,7 +234,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::I32badc => {
                     let wd = writevalues.iter().map(|v| v.parse::<i32>().unwrap()).fold(
@@ -214,7 +250,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::I32dcba => {
                     let wd = writevalues.iter().map(|v| v.parse::<i32>().unwrap()).fold(
@@ -226,7 +266,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::U32 | Formats::Hex32 | Formats::Bin32 => {
                     // check_args already checked Formats::I32
@@ -256,7 +300,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                         }
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::U32abcd => {
                     let wd = writevalues.iter().map(|v| v.parse::<u32>().unwrap()).fold(
@@ -268,7 +316,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::U32cdab => {
                     let wd = writevalues.iter().map(|v| v.parse::<u32>().unwrap()).fold(
@@ -280,7 +332,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::U32badc => {
                     let wd = writevalues.iter().map(|v| v.parse::<u32>().unwrap()).fold(
@@ -292,7 +348,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::U32dcba => {
                     let wd = writevalues.iter().map(|v| v.parse::<u32>().unwrap()).fold(
@@ -304,7 +364,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             acc
                         },
                     );
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::F32 => {
                     let wd = writevalues
@@ -324,7 +388,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                         }
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::F32abcd => {
                     let wd = writevalues
@@ -339,7 +407,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[2], data[3]]));
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::F32cdab => {
                     let wd = writevalues
@@ -354,7 +426,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[0], data[1]]));
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::F32badc => {
                     let wd = writevalues
@@ -369,7 +445,11 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[3], data[2]]));
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::F32dcba => {
                     let wd = writevalues
@@ -384,17 +464,29 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                         acc.push(u16::from_be_bytes([data[1], data[0]]));
                         acc
                     });
-                    rs = ctx.write_multiple_registers(reference[0], &wd).await;
+                    rs = timeout_at(
+                        Instant::now() + duration,
+                        ctx.write_multiple_registers(reference[0], &wd),
+                    )
+                    .await;
                 }
                 Formats::String => {
                     todo!()
                 }
             }
-            if rs.is_ok() {
-                RECEIVE_COUNT.fetch_add(1, Ordering::Relaxed);
-                println!("Write {} references.", count);
-            } else {
-                println!("Write {:?} failed: {:?}", function, rs.err().unwrap());
+            match rs {
+                Ok(Ok(_)) => {
+                    RECEIVE_COUNT.fetch_add(1, Ordering::Relaxed);
+                    println!("Write {} references.", writevalues.len());
+                }
+                Ok(Err(e)) => {
+                    ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                    println!("Write {:?} failed: {:?}", function, e);
+                }
+                Err(_) => {
+                    ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                    println!("Write {:?} timeout", function);
+                }
             }
         } else {
             // read
@@ -410,8 +502,10 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                     TRANSMIT_COUNT.fetch_add(1, Ordering::Relaxed);
                     match function {
                         Functions::Coil => {
-                            match ctx.read_coils(addr, nregs).await {
-                                Ok(r) => match r {
+                            match timeout_at(Instant::now() + duration, ctx.read_coils(addr, nregs))
+                                .await
+                            {
+                                Ok(Ok(r)) => match r {
                                     Ok(v) => {
                                         let data = v
                                             .iter()
@@ -431,15 +525,24 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                                         println!("Read {:?} failed: {:?}", function, e);
                                     }
                                 },
-                                Err(e) => {
+                                Ok(Err(e)) => {
                                     ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
                                     println!("Read {:?} failed: {:?}", function, e);
+                                }
+                                Err(_) => {
+                                    ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                    println!("Read {:?} timeout", function);
                                 }
                             };
                         }
                         Functions::DiscreteInput => {
-                            match ctx.read_discrete_inputs(addr, nregs).await {
-                                Ok(r) => match r {
+                            match timeout_at(
+                                Instant::now() + duration,
+                                ctx.read_discrete_inputs(addr, nregs),
+                            )
+                            .await
+                            {
+                                Ok(Ok(r)) => match r {
                                     Ok(v) => {
                                         let data = v
                                             .iter()
@@ -454,20 +557,30 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                                             data,
                                         );
                                     }
+
                                     Err(e) => {
                                         ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
                                         println!("Read {:?} failed: {:?}", function, e);
                                     }
                                 },
-                                Err(e) => {
+                                Ok(Err(e)) => {
                                     ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
                                     println!("Read {:?} failed: {:?}", function, e);
+                                }
+                                Err(_) => {
+                                    ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                    println!("Read {:?} timeout", function);
                                 }
                             };
                         }
                         Functions::HoldingRegister => {
-                            match ctx.read_holding_registers(addr, nregs).await {
-                                Ok(r) => match r {
+                            match timeout_at(
+                                Instant::now() + duration,
+                                ctx.read_holding_registers(addr, nregs),
+                            )
+                            .await
+                            {
+                                Ok(Ok(r)) => match r {
                                     Ok(data) => {
                                         print_read_value(
                                             addr,
@@ -483,15 +596,24 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                                         println!("Read {:?} failed: {:?}", function, e);
                                     }
                                 },
-                                Err(e) => {
+                                Ok(Err(e)) => {
                                     ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
                                     println!("Read {:?} failed: {:?}", function, e);
+                                }
+                                Err(_) => {
+                                    ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                    println!("Read {:?} timeout", function);
                                 }
                             };
                         }
                         Functions::InputRegister => {
-                            match ctx.read_input_registers(addr, nregs).await {
-                                Ok(r) => match r {
+                            match timeout_at(
+                                Instant::now() + duration,
+                                ctx.read_input_registers(addr, nregs),
+                            )
+                            .await
+                            {
+                                Ok(Ok(r)) => match r {
                                     Ok(data) => {
                                         print_read_value(
                                             addr,
@@ -507,14 +629,18 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                                         println!("Read {:?} failed: {:?}", function, e);
                                     }
                                 },
-                                Err(e) => {
+                                Ok(Err(e)) => {
                                     ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
                                     println!("Read {:?} failed: {:?}", function, e);
+                                }
+                                Err(_) => {
+                                    ERROR_COUNT.fetch_add(1, Ordering::Relaxed);
+                                    println!("Read {:?} timeout", function);
                                 }
                             };
                         }
                         _ => {
-                            todo!()
+                            unreachable!();
                         }
                     }
                 }
