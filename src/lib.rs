@@ -18,7 +18,7 @@ pub enum DeviceType {
 }
 
 #[derive(Debug, Clone, Parser)]
-#[command(author, version, about="Modbus/IEC104 Master Simulator", long_about = None)]
+#[command(author, version, about="Modbus/IEC104 Client Simulator", long_about = None)]
 pub struct Args {
     /// DEVICE: Serial port when using ModBus RTU protocol.
     /// HOST: Host name or dotted IP address when using ModBus/TCP or IEC104

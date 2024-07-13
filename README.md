@@ -16,7 +16,7 @@ rm ./dpoll.gz
 # Usage
 
 ```
-Modbus/IEC104 Master Simulator
+Modbus/IEC104 Client Simulator
 
 Usage: dpoll [OPTIONS] <DEVICE|HOST|NAME> [WRITEVALUES]...
 
