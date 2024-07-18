@@ -120,8 +120,8 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                 {
                     let wd = writevalues
                         .iter()
-                        .map(|v| v.parse::<bool>().unwrap())
-                        .collect::<Vec<bool>>();
+                        .map(|v| v.parse::<u16>().unwrap())
+                        .collect::<Vec<u16>>();
                     if wd.len() == 1 {
                         rs = timeout_at(
                             Instant::now() + duration,
@@ -507,10 +507,7 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             {
                                 Ok(Ok(r)) => match r {
                                     Ok(v) => {
-                                        let data = v
-                                            .iter()
-                                            .map(|c| if !(*c) { 0 } else { 1 })
-                                            .collect::<Vec<u16>>();
+                                        let data = v;
                                         print_read_value(
                                             addr,
                                             count,
@@ -544,10 +541,7 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                             {
                                 Ok(Ok(r)) => match r {
                                     Ok(v) => {
-                                        let data = v
-                                            .iter()
-                                            .map(|c| if !(*c) { 0 } else { 1 })
-                                            .collect::<Vec<u16>>();
+                                        let data = v;
                                         print_read_value(
                                             addr,
                                             count,
@@ -1130,8 +1124,8 @@ fn check_args(args: &mut Args) -> Result<()> {
             }
             Functions::Coil => {
                 for v in writevalues {
-                    if v.parse::<bool>().is_err() {
-                        Err(anyhow::anyhow!("Write value {} must be bool", v))?;
+                    if v.parse::<u16>().is_err() {
+                        Err(anyhow::anyhow!("Write value {} must be u16", v))?;
                     }
                 }
             }

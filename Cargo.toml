@@ -11,7 +11,7 @@ clap = { version = "4.4.11", features = ["derive"] }
 serde = { version = "1.0.193", features = ["derive"] }
 serde_json = "1.0.108"
 tokio = "1.35.0"
-tokio-modbus = { git = "https://github.com/niceda/tokio-modbus", branch = "main", version = "*", default-features = true, features = [
+tokio-modbus = { git = "https://github.com/niceda/tokio-modbus", branch = "coil-to-u16", version = "*", default-features = true, features = [
   "tcp-server",
   "tcp",
   "rtu",

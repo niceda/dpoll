@@ -942,7 +942,7 @@ dependencies = [
 [[package]]
 name = "tokio-modbus"
 version = "0.13.1"
-source = "git+https://github.com/niceda/tokio-modbus?branch=main#ed8b7dda571a806f3445fd8bc339e70e442e89cb"
+source = "git+https://github.com/niceda/tokio-modbus?branch=coil-to-u16#9b18f36a26ef05ea0aa74eeda4ff3b76e9a1f41f"
 dependencies = [
  "async-trait",
  "byteorder",
