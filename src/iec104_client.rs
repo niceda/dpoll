@@ -169,6 +169,17 @@ impl IEC104Client {
         self.inner.siq_space.lock().unwrap()[addr as usize]
     }
 
+    pub fn extract_all_siq(&self) -> Vec<(u16, bool)> {
+        self.inner
+            .siq_space
+            .lock()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| v.map(|v| (i as u16, v)))
+            .collect()
+    }
+
     pub async fn write_siq(&self, addr: u16, v: bool) -> Result<(), Error> {
         let cmd = SingleCommandInfo::new(addr, v, true);
         self.client
@@ -193,6 +204,17 @@ impl IEC104Client {
 
     pub fn read_diq(&self, addr: u16) -> Option<u8> {
         self.inner.diq_space.lock().unwrap()[addr as usize]
+    }
+
+    pub fn extract_all_diq(&self) -> Vec<(u16, u8)> {
+        self.inner
+            .diq_space
+            .lock()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| v.map(|v| (i as u16, v)))
+            .collect()
     }
 
     pub async fn write_diq(&self, addr: u16, v: u8) -> Result<(), Error> {
@@ -221,6 +243,17 @@ impl IEC104Client {
         self.inner.nva_space.lock().unwrap()[addr as usize]
     }
 
+    pub fn extract_all_nva(&self) -> Vec<(u16, i16)> {
+        self.inner
+            .nva_space
+            .lock()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| v.map(|v| (i as u16, v)))
+            .collect()
+    }
+
     pub async fn write_nva(&self, addr: u16, v: i16) -> Result<(), Error> {
         let cmd = SetpointCommandNormalInfo::new(addr, v);
         self.client
@@ -235,6 +268,17 @@ impl IEC104Client {
 
     pub fn read_sva(&self, addr: u16) -> Option<i16> {
         self.inner.sva_space.lock().unwrap()[addr as usize]
+    }
+
+    pub fn extract_all_sva(&self) -> Vec<(u16, i16)> {
+        self.inner
+            .sva_space
+            .lock()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| v.map(|v| (i as u16, v)))
+            .collect()
     }
 
     pub async fn write_sva(&self, addr: u16, v: i16) -> Result<(), Error> {
@@ -253,6 +297,17 @@ impl IEC104Client {
         self.inner.r_space.lock().unwrap()[addr as usize]
     }
 
+    pub fn extract_all_r(&self) -> Vec<(u16, f32)> {
+        self.inner
+            .r_space
+            .lock()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| v.map(|v| (i as u16, v)))
+            .collect()
+    }
+
     pub async fn write_r(&self, addr: u16, v: f32) -> Result<(), Error> {
         let cmd = SetpointCommandFloatInfo::new(addr, v);
         self.client
@@ -267,6 +322,17 @@ impl IEC104Client {
 
     pub fn read_bcr(&self, addr: u16) -> Option<i32> {
         self.inner.bcr_space.lock().unwrap()[addr as usize]
+    }
+
+    pub fn extract_all_bcr(&self) -> Vec<(u16, i32)> {
+        self.inner
+            .bcr_space
+            .lock()
+            .unwrap()
+            .iter()
+            .enumerate()
+            .filter_map(|(i, v)| v.map(|v| (i as u16, v)))
+            .collect()
     }
 
     pub async fn write_bcr(&self, addr: u16, v: i32) -> Result<(), Error> {

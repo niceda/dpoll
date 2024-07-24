@@ -105,6 +105,7 @@ pub struct Args {
     /// -t sva        IEC104 Measured Value Scaled Info 测量值,标度化值
     /// -t r          IEC104 Measured Value Float Info 测量值,短浮点数
     /// -t bcr        IEC104 Binary Counter Reading Info 累计量
+    /// -t all        IEC104 总召唤所有数据
     #[clap(short, long, default_value = "3", verbatim_doc_comment)]
     #[arg(value_parser = parse_type)]
     pub r#type: Option<Type>,
@@ -191,10 +192,12 @@ pub enum Functions {
     Sva,
     R,
     Bcr,
+    All,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Formats {
+    Unkonwn,
     U16,
     I16,
     I32,
@@ -296,6 +299,10 @@ impl FromStr for Type {
                     format = Formats::I32;
                     Functions::Bcr
                 }
+                "all" => {
+                    format = Formats::Unkonwn;
+                    Functions::All
+                }
                 _ => Err(anyhow::anyhow!("Unsupported function"))?,
             };
         } else {
@@ -339,6 +346,10 @@ impl FromStr for Type {
                 "bcr" => {
                     format = Formats::I32;
                     Functions::Bcr
+                }
+                "all" => {
+                    format = Formats::Unkonwn;
+                    Functions::All
                 }
                 _ => {
                     format = Formats::U16;

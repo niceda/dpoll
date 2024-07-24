@@ -470,7 +470,7 @@ async fn run<T: Writer + Reader>(mut ctx: T, args: Args) -> Result<()> {
                     )
                     .await;
                 }
-                Formats::String => {
+                _ => {
                     todo!()
                 }
             }
@@ -945,6 +945,48 @@ async fn iec104_client(args: Args) -> Result<()> {
                         }
                     }
                 }
+                Functions::All => {
+                    let mut has_data = false;
+                    for (ad, v) in client.extract_all_siq() {
+                        has_data = true;
+                        print!("[siq] [{}({:#04X})]: \t", ad, ad);
+                        println!("{}", v);
+                    }
+
+                    for (ad, v) in client.extract_all_diq() {
+                        has_data = true;
+                        print!("[diq] [{}({:#04X})]: \t", ad, ad);
+                        println!("{}", v);
+                    }
+
+                    for (ad, v) in client.extract_all_nva() {
+                        has_data = true;
+                        print!("[nva] [{}({:#04X})]: \t", ad, ad);
+                        println!("{}", v);
+                    }
+
+                    for (ad, v) in client.extract_all_sva() {
+                        has_data = true;
+                        print!("[sva] [{}({:#04X})]: \t", ad, ad);
+                        println!("{}", v);
+                    }
+
+                    for (ad, v) in client.extract_all_r() {
+                        has_data = true;
+                        print!("[r] [{}({:#04X})]: \t", ad, ad);
+                        println!("{}", v);
+                    }
+
+                    for (ad, v) in client.extract_all_bcr() {
+                        has_data = true;
+                        print!("[bcr] [{}({:#04X})]: \t", ad, ad);
+                        println!("{}", v);
+                    }
+
+                    if !has_data {
+                        println!("waiting for data...");
+                    }
+                }
                 _ => unreachable!(),
             }
 
@@ -1104,8 +1146,7 @@ fn print_read_value(
                 println!("{:032b}", v);
                 addr += 2;
             }
-
-            Formats::String => {
+            _ => {
                 // addr += 1;
                 todo!()
             }
@@ -1198,6 +1239,7 @@ fn check_args(args: &mut Args) -> Result<()> {
                 Formats::String => {
                     Err(anyhow::anyhow!("You can use string format only for output"))?
                 }
+                Formats::Unkonwn => Err(anyhow::anyhow!("Unknown format"))?,
             },
             Functions::Siq => {
                 for v in writevalues {
@@ -1240,6 +1282,11 @@ fn check_args(args: &mut Args) -> Result<()> {
                     {
                         Err(anyhow::anyhow!("Write value {} must be u32/hex32/bin32", v))?;
                     }
+                }
+            }
+            Functions::All => {
+                if !args.writevalues.clone().unwrap().is_empty() {
+                    Err(anyhow::anyhow!("Write value not allowed"))?;
                 }
             }
         }
