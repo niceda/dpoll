@@ -748,7 +748,11 @@ async fn iec104_client(args: Args) -> Result<()> {
         args.port.unwrap(),
     );
     let mut client = IEC104Client::new(socket_addr, remote_addr as u16);
-    client.start().await?;
+    if writevalues.is_some() {
+        client.start().await?;
+    } else {
+        client.start_interrogation().await?;
+    }
     loop {
         // write
         if writevalues.is_some() {

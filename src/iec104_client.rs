@@ -65,6 +65,45 @@ impl IEC104Client {
         self.terminated_rx = Some(terminated_rx);
 
         let client = self.client.clone();
+
+        tokio::spawn(async move {
+            loop {
+                if shutdown_rx.try_recv().is_ok() {
+                    terminated_tx.send(()).unwrap();
+                    break;
+                }
+                if !client.is_connected().await {
+                    // client 会自动连接
+                    // client.start().await;
+                    continue;
+                }
+                if !client.is_active().await {
+                    if client.send_start_dt().await.is_err() {
+                        continue;
+                    }
+                    log::info!("IEC104 TRIGGER: STARTDT");
+                }
+
+                sleep(Duration::from_secs(1)).await;
+            }
+        });
+
+        Ok(())
+    }
+
+    pub async fn start_interrogation(&mut self) -> Result<(), Error> {
+        self.client.start().await?;
+
+        if self.shutdown_tx.is_some() {
+            return Ok(());
+        }
+
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
+        let (terminated_tx, terminated_rx) = oneshot::channel();
+        self.shutdown_tx = Some(shutdown_tx);
+        self.terminated_rx = Some(terminated_rx);
+
+        let client = self.client.clone();
         let remote_addr = self.remote_addr;
 
         tokio::spawn(async move {
@@ -218,25 +257,30 @@ impl IEC104Client {
     }
 
     pub async fn write_diq(&self, addr: u16, v: u8) -> Result<(), Error> {
-        let cmd = DoubleCommandInfo::new(addr, v, true);
-        self.client
-            .double_cmd(
-                TypeID::C_DC_NA_1,
-                CauseOfTransmission::new(false, false, Cause::Activation),
-                self.remote_addr,
-                cmd,
-            )
-            .await?;
+        let v = v % 4;
+        {
+            let cmd = DoubleCommandInfo::new(addr, v, true);
+            self.client
+                .double_cmd(
+                    TypeID::C_DC_NA_1,
+                    CauseOfTransmission::new(false, false, Cause::Activation),
+                    self.remote_addr,
+                    cmd,
+                )
+                .await?;
+        }
 
-        let cmd = DoubleCommandInfo::new(addr, v, false);
-        self.client
-            .double_cmd(
-                TypeID::C_DC_NA_1,
-                CauseOfTransmission::new(false, false, Cause::Activation),
-                self.remote_addr,
-                cmd,
-            )
-            .await
+        {
+            let cmd = DoubleCommandInfo::new(addr, v, false);
+            self.client
+                .double_cmd(
+                    TypeID::C_DC_NA_1,
+                    CauseOfTransmission::new(false, false, Cause::Activation),
+                    self.remote_addr,
+                    cmd,
+                )
+                .await
+        }
     }
 
     pub fn read_nva(&self, addr: u16) -> Option<i16> {
